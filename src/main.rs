@@ -4,6 +4,7 @@
 extern crate glium;
 extern crate crossbeam;
 extern crate time;
+extern crate cgmath;
 
 use std::sync::{Arc};
 
@@ -13,6 +14,8 @@ mod physics_context;
 use physics_context::{PhysicsContext};
 mod thread_pool;
 use thread_pool::{ThreadPool};
+
+mod camera;
 
 
 // TODO:

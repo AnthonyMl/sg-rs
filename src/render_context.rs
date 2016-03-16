@@ -5,7 +5,24 @@ use glium::{DisplayBuild, Surface, Frame, VertexBuffer};
 use glium::glutin::{WindowBuilder};
 use glium::backend::glutin_backend::{GlutinFacade};
 use glium::index::{PrimitiveType};
+use glium::uniforms::{AsUniformValue, UniformValue};
+use cgmath;
 
+use camera::{Camera};
+
+
+struct UMatrix4(cgmath::Matrix4<f32>);
+
+impl AsUniformValue for UMatrix4 {
+	fn as_uniform_value(&self) -> UniformValue {
+		UniformValue::Mat4([
+			[self.0.x.x, self.0.x.y, self.0.x.z, self.0.x.w],
+			[self.0.y.x, self.0.y.y, self.0.y.z, self.0.y.w],
+			[self.0.z.x, self.0.z.y, self.0.z.z, self.0.z.w],
+			[self.0.w.x, self.0.w.y, self.0.w.z, self.0.w.w],
+		])
+	}
+}
 
 pub enum RenderCommand {
 	ClearScreen {
@@ -16,25 +33,30 @@ pub enum RenderCommand {
 }
 
 pub fn create() -> (RenderContext, RenderProcessor) {
+	const WIDTH:  usize = 640;
+	const HEIGHT: usize = 480;
+
 	let context = WindowBuilder::new()
-		.with_dimensions(640, 480)
+		.with_dimensions(WIDTH as u32, HEIGHT as u32)
 		.with_title(format!("SG"))
 		.build_glium().unwrap();
 
 	let triangle = vec![
-		Vertex{ position: [-0.5, -0.5] },
-		Vertex{ position: [ 0.0,  0.5] },
-		Vertex{ position: [ 0.5, -0.25] },
+		Vertex{ position: [-0.5, -0.5 , 0.0] },
+		Vertex{ position: [ 0.0,  0.5 , 0.0] },
+		Vertex{ position: [ 0.5, -0.25, 0.0] },
 	];
 	let vertex_buffer = VertexBuffer::new(&context, &triangle).unwrap();
 
 	let vertex_source = r#"
 		#version 140
 
-		in vec2 position;
+		in vec3 position;
+
+		uniform mat4 mvp;
 
 		void main() {
-			gl_Position = vec4(position, 0.0, 1.0);
+			gl_Position = mvp * vec4(position, 1.0);
 		}
 	"#;
 	let fragment_source = r#"
@@ -54,10 +76,11 @@ pub fn create() -> (RenderContext, RenderProcessor) {
  		},
 		RenderProcessor {
 			q: q.clone(),
-			context: context,
 			frame: None,
+			camera: Camera::new(WIDTH, HEIGHT),
 			vertex_buffer: vertex_buffer,
 			program: program,
+			context: context,
 		}
 	)
 }
@@ -73,6 +96,7 @@ pub struct RenderProcessor {
 	context: GlutinFacade, // TODO: can we use a better type here
 	frame: Option<RenderFrame>, // maybe some sort of multiproc command q in the future
 	vertex_buffer: VertexBuffer<Vertex>,
+	camera: Camera,
 	program: glium::Program,
 }
 
@@ -145,11 +169,15 @@ impl RenderProcessor {
 				RenderCommand::DrawTriangle => {
 					match self.frame {
 						Some(ref mut rf) => {
+							let uniforms = uniform! {
+								mvp: UMatrix4(self.camera.mtx_full),
+							};
+
 							rf.draw_context.draw(
 								&self.vertex_buffer,
 								&glium::index::NoIndices(PrimitiveType::TrianglesList),
 								&self.program,
-								&glium::uniforms::EmptyUniforms,
+								&uniforms,
 								&Default::default()).unwrap();
 						},
 						None => ()
@@ -162,7 +190,7 @@ impl RenderProcessor {
 
 #[derive(Copy, Clone)]
 struct Vertex {
-	position: [f32; 2],
+	position: [f32; 3],
 }
 implement_vertex!(Vertex, position);
 
