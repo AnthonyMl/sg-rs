@@ -57,14 +57,12 @@ fn game_loop((render_context, physics_context): (RenderContext, PhysicsContext),
 	const RATE_PHYSICS: u64 =  8333333; // 120 hz
 	const RATE_RENDER:  u64 = 16666666; // 60 hz
 
-	// <frame_state>
 	let mut last_time_input = time::precise_time_ns();
 	let mut last_time_physics = last_time_input;
 	let mut last_time_render = last_time_input;
 	let mut frame_number_input   = 0;
 	let mut frame_number_physics = 0;
 	let mut frame_number_render  = 0;
-	// <\frame_state>
 
 	let rc = Arc::new(render_context);
 	let pc = Arc::new(physics_context);

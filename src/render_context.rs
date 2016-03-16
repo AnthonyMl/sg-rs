@@ -1,8 +1,10 @@
 use std::sync::{Arc};
 use crossbeam::sync::{MsQueue};
-use glium::{DisplayBuild, Surface, Frame};
+use glium;
+use glium::{DisplayBuild, Surface, Frame, VertexBuffer};
 use glium::glutin::{WindowBuilder};
 use glium::backend::glutin_backend::{GlutinFacade};
+use glium::index::{PrimitiveType};
 
 
 pub enum RenderCommand {
@@ -19,8 +21,32 @@ pub fn create() -> (RenderContext, RenderProcessor) {
 		.with_title(format!("SG"))
 		.build_glium().unwrap();
 
-	// TODO: init our glium graphics state
+	let triangle = vec![
+		Vertex{ position: [-0.5, -0.5] },
+		Vertex{ position: [ 0.0,  0.5] },
+		Vertex{ position: [ 0.5, -0.25] },
+	];
+	let vertex_buffer = VertexBuffer::new(&context, &triangle).unwrap();
 
+	let vertex_source = r#"
+		#version 140
+
+		in vec2 position;
+
+		void main() {
+			gl_Position = vec4(position, 0.0, 1.0);
+		}
+	"#;
+	let fragment_source = r#"
+		#version 140
+
+		out vec4 color;
+
+		void main() {
+			color = vec4(0.5, 0.25, 0.125, 1.0);
+		}
+	"#;
+	let program = glium::Program::from_source(&context, vertex_source, fragment_source, None).unwrap();
 
 	let q = Arc::new(MsQueue::new());
 	(	RenderContext {
@@ -30,6 +56,8 @@ pub fn create() -> (RenderContext, RenderProcessor) {
 			q: q.clone(),
 			context: context,
 			frame: None,
+			vertex_buffer: vertex_buffer,
+			program: program,
 		}
 	)
 }
@@ -37,6 +65,17 @@ pub fn create() -> (RenderContext, RenderProcessor) {
 pub struct RenderContext {
 	q: Arc<MsQueue<RenderCommand>>,
 }
+// RP can internally track the frame_number by the number of swap_buffers calls
+// We can also remove clear calls if we clear in the swapbuffers (and replace our old frame objec with a new one)
+//
+pub struct RenderProcessor {
+	q: Arc<MsQueue<RenderCommand>>,
+	context: GlutinFacade, // TODO: can we use a better type here
+	frame: Option<RenderFrame>, // maybe some sort of multiproc command q in the future
+	vertex_buffer: VertexBuffer<Vertex>,
+	program: glium::Program,
+}
+
 impl RenderContext {
 	pub fn swap_buffers(&self) {
 		self.q.push(RenderCommand::SwapBuffers);
@@ -57,14 +96,6 @@ impl RenderContext {
 	}
 }
 
-// RP can internally track the frame_number by the number of swap_buffers calls
-// We can also remove clear calls if we clear in the swapbuffers (and replace our old frame objec with a new one)
-//
-pub struct RenderProcessor {
-	q: Arc<MsQueue<RenderCommand>>,
-	context: GlutinFacade, // TODO: can we use a better type here
-	frame: Option<RenderFrame>, // maybe some sort of multiproc command q in the future
-}
 impl RenderProcessor {
 	// returns true to signal caller to exit program and event loop
 	// TODO: should std::process::exit(i32) be used instead?
@@ -113,8 +144,13 @@ impl RenderProcessor {
 				},
 				RenderCommand::DrawTriangle => {
 					match self.frame {
-						Some(ref _f) => {
-							// TODO: implement
+						Some(ref mut rf) => {
+							rf.draw_context.draw(
+								&self.vertex_buffer,
+								&glium::index::NoIndices(PrimitiveType::TrianglesList),
+								&self.program,
+								&glium::uniforms::EmptyUniforms,
+								&Default::default()).unwrap();
 						},
 						None => ()
 					}
@@ -123,6 +159,12 @@ impl RenderProcessor {
 		}
 	}
 }
+
+#[derive(Copy, Clone)]
+struct Vertex {
+	position: [f32; 2],
+}
+implement_vertex!(Vertex, position);
 
 struct RenderFrame {
 	_frame_number: usize,
