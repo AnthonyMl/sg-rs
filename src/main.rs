@@ -8,14 +8,16 @@ extern crate cgmath;
 
 use std::sync::{Arc};
 
-mod render_context;
-use render_context::{RenderContext};
+mod render;
+use render::render_context::{RenderContext};
 mod physics_context;
 use physics_context::{PhysicsContext};
 mod thread_pool;
 use thread_pool::{ThreadPool};
 
+mod vertex3;
 mod camera;
+mod uniform_wrappers;
 
 
 // TODO:
@@ -30,7 +32,10 @@ mod camera;
 // 1 game loop thread (constantly yielding/sleeping)
 //
 fn main() {
-	let (rc, mut rp) = render_context::create(); // main thread is ui thread
+	const WIDTH: usize = 640;
+	const HEIGHT: usize = 480;
+
+	let (rc, mut rp) = render::render_context::create(WIDTH, HEIGHT); // main thread is ui thread
 	let pc = PhysicsContext::new();
 
 	const NUM_WORKER_THREADS: usize = 3;

@@ -39,7 +39,7 @@ impl ThreadPool {
 		self.q.try_pop()
 	}
 
-	pub fn wait(self) {
+	pub fn _wait(self) {
 		for handle in self.join_handles {
 			let _ = handle.join();
 		}
