@@ -1,12 +1,16 @@
 #![feature(fnbox)]
 
 #[macro_use]
+extern crate glium;
+extern crate crossbeam;
 extern crate time;
 
 use std::sync::{Arc};
 
 mod render_context;
 use render_context::{RenderContext};
+mod physics_context;
+use physics_context::{PhysicsContext};
 mod thread_pool;
 use thread_pool::{ThreadPool};
 
@@ -24,13 +28,14 @@ use thread_pool::{ThreadPool};
 //
 fn main() {
 	let (rc, mut rp) = render_context::create(); // main thread is ui thread
+	let pc = PhysicsContext::new();
 
 	const NUM_WORKER_THREADS: usize = 3;
 	let pool = Arc::new(Box::new(ThreadPool::new(NUM_WORKER_THREADS)));
 	let pool_ref = pool.clone();
 
 	std::thread::spawn(move || {
-		game_loop(rc, pool_ref); // lightweight game_loop thread
+		game_loop((rc, pc), pool_ref); // lightweight game_loop thread
 	});
 
 	loop {
@@ -47,7 +52,7 @@ fn main() {
 //	pool.wait(); // TODO: figure out how to sync this so that we can grab ownership of the pool safely
 }
 
-fn game_loop(context: RenderContext, pool: Arc<Box<ThreadPool>>) {
+fn game_loop((render_context, physics_context): (RenderContext, PhysicsContext), pool: Arc<Box<ThreadPool>>) {
 	const RATE_INPUT:   u64 =  8333333; // 120 hz
 	const RATE_PHYSICS: u64 =  8333333; // 120 hz
 	const RATE_RENDER:  u64 = 16666666; // 60 hz
@@ -61,7 +66,8 @@ fn game_loop(context: RenderContext, pool: Arc<Box<ThreadPool>>) {
 	let mut frame_number_render  = 0;
 	// <\frame_state>
 
-	let rc = Arc::new(context);
+	let rc = Arc::new(render_context);
+	let pc = Arc::new(physics_context);
 
 	loop {
 		let time = time::precise_time_ns();
@@ -76,8 +82,9 @@ fn game_loop(context: RenderContext, pool: Arc<Box<ThreadPool>>) {
 		while time - last_time_physics > RATE_PHYSICS {
 			last_time_physics += RATE_PHYSICS;
 			frame_number_physics += 1;
+			let local_pc = pc.clone();
 			pool.post(Box::new(move || {
-				handle_physics(frame_number_physics);
+				local_pc.tick(frame_number_physics);
 			}));
 		}
 		while time - last_time_render > RATE_RENDER {
@@ -85,7 +92,7 @@ fn game_loop(context: RenderContext, pool: Arc<Box<ThreadPool>>) {
 			frame_number_render += 1;
 			let local_rc = rc.clone();
 			pool.post(Box::new(move || {
-				handle_rendering(local_rc, frame_number_render);
+				local_rc.tick(frame_number_render);
  			}));
 		}
 
@@ -95,16 +102,4 @@ fn game_loop(context: RenderContext, pool: Arc<Box<ThreadPool>>) {
 
 fn handle_input(_frame_number: usize) {
 
-}
-
-fn handle_physics(_frame_number: usize) {
-
-}
-
-fn handle_rendering(rc: Arc<RenderContext>, frame_number: usize) {
-	rc.clear_screen(frame_number);
-
-	rc.draw_garbage();
-
-	rc.swap_buffers();
 }

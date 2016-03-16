@@ -1,10 +1,8 @@
-extern crate crossbeam;
-
 use std;
 use std::vec::{Vec};
 use std::sync::{Arc};
 use std::boxed::{FnBox};
-use self::crossbeam::sync::{MsQueue};
+use crossbeam::sync::{MsQueue};
 
 
 pub type TaskFn = Box<FnBox()->() + Send>;

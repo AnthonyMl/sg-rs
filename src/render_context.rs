@@ -1,9 +1,8 @@
-extern crate crossbeam;
-extern crate glium;
-
 use std::sync::{Arc};
-use self::crossbeam::sync::{MsQueue};
-use self::glium::{DisplayBuild, Surface};
+use crossbeam::sync::{MsQueue};
+use glium::{DisplayBuild, Surface, Frame};
+use glium::glutin::{WindowBuilder};
+use glium::backend::glutin_backend::{GlutinFacade};
 
 
 pub enum RenderCommand {
@@ -15,10 +14,13 @@ pub enum RenderCommand {
 }
 
 pub fn create() -> (RenderContext, RenderProcessor) {
-	let context = glium::glutin::WindowBuilder::new()
+	let context = WindowBuilder::new()
 		.with_dimensions(640, 480)
 		.with_title(format!("SG"))
 		.build_glium().unwrap();
+
+	// TODO: init our glium graphics state
+
 
 	let q = Arc::new(MsQueue::new());
 	(	RenderContext {
@@ -45,11 +47,22 @@ impl RenderContext {
 	pub fn draw_garbage(&self) {
 		self.q.push(RenderCommand::DrawTriangle);
 	}
+
+	pub fn tick(&self, frame_number: usize) {
+		self.clear_screen(frame_number);
+
+		self.draw_garbage();
+
+		self.swap_buffers();
+	}
 }
 
+// RP can internally track the frame_number by the number of swap_buffers calls
+// We can also remove clear calls if we clear in the swapbuffers (and replace our old frame objec with a new one)
+//
 pub struct RenderProcessor {
 	q: Arc<MsQueue<RenderCommand>>,
-	context: glium::backend::glutin_backend::GlutinFacade, // TODO: can we use a better type here
+	context: GlutinFacade, // TODO: can we use a better type here
 	frame: Option<RenderFrame>, // maybe some sort of multiproc command q in the future
 }
 impl RenderProcessor {
@@ -57,7 +70,7 @@ impl RenderProcessor {
 	// TODO: should std::process::exit(i32) be used instead?
 	//
 	pub fn handle_system_events(&self) -> bool {
-		use self::glium::glutin::{Event, VirtualKeyCode};
+		use glium::glutin::{Event, VirtualKeyCode};
 
 		for event in self.context.poll_events() {
 			match event {
@@ -113,10 +126,10 @@ impl RenderProcessor {
 
 struct RenderFrame {
 	_frame_number: usize,
-	draw_context: glium::Frame,
+	draw_context: Frame,
 }
 impl RenderFrame {
-	pub fn new(frame_number: usize, draw_context: glium::Frame) -> RenderFrame {
+	pub fn new(frame_number: usize, draw_context: Frame) -> RenderFrame {
 		RenderFrame {
 			_frame_number: frame_number,
 			draw_context: draw_context,
