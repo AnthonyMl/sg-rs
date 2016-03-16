@@ -9,7 +9,7 @@ extern crate cgmath;
 use std::sync::{Arc};
 
 mod render;
-use render::render_context::{RenderContext};
+use render::{RenderContext};
 mod physics_context;
 use physics_context::{PhysicsContext};
 mod thread_pool;
@@ -35,7 +35,7 @@ fn main() {
 	const WIDTH: usize = 640;
 	const HEIGHT: usize = 480;
 
-	let (rc, mut rp) = render::render_context::create(WIDTH, HEIGHT); // main thread is ui thread
+	let (rc, mut rp) = render::render::create(WIDTH, HEIGHT); // main thread is ui thread
 	let pc = PhysicsContext::new();
 
 	const NUM_WORKER_THREADS: usize = 3;
