@@ -1,0 +1,9 @@
+[package]
+name = "sg-rs"
+version = "0.1.0"
+authors = ["AnthonyMl <mladenov.anthony@gmail.com>"]
+
+[dependencies]
+glium = "0.13.5"
+crossbeam = "0.2.5"
+time = "0.1"
