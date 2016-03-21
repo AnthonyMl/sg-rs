@@ -6,18 +6,21 @@ extern crate crossbeam;
 extern crate time;
 extern crate cgmath;
 
-use std::sync::{Arc};
-
+mod context;
 mod render;
-use render::{RenderContext};
 mod physics_context;
-use physics_context::{PhysicsContext};
+mod input_context;
 mod thread_pool;
-use thread_pool::{ThreadPool};
-
 mod vertex3;
 mod camera;
 mod uniform_wrappers;
+
+use std::sync::{Arc};
+
+use input_context::{InputContext};
+use physics_context::{PhysicsContext};
+use thread_pool::{ThreadPool};
+use context::{Context};
 
 
 // TODO:
@@ -26,24 +29,31 @@ mod uniform_wrappers;
 // 		s.t. the gl thread only does short, high priority tasks
 //
 
+type ContextType = Arc<Vec<Arc<Context + Send + Sync + 'static>>>;
+
 // --- THREADING MODEL ---
 // 1 gl / worker thread (minimize gl tasks to actual gl calls)
-// (n-1) [ 3 ] worker threads
-// 1 game loop thread (constantly yielding/sleeping)
+// (n-1) worker threads where n is the number of cores on the system
+// 1 lightweight game loop thread (constantly yielding/sleeping)
 //
 fn main() {
 	const WIDTH: usize = 640;
 	const HEIGHT: usize = 480;
 
 	let (rc, mut rp) = render::create(WIDTH, HEIGHT); // main thread is ui thread
-	let pc = PhysicsContext::new();
 
 	const NUM_WORKER_THREADS: usize = 3;
 	let pool = Arc::new(Box::new(ThreadPool::new(NUM_WORKER_THREADS)));
 	let pool_ref = pool.clone();
 
+	let contexts: ContextType = Arc::new(vec![
+		Arc::new(InputContext::new()),
+		Arc::new(PhysicsContext::new()),
+		Arc::new(rc),
+	]);
+
 	std::thread::spawn(move || {
-		game_loop((rc, pc), pool_ref); // lightweight game_loop thread
+		game_loop(contexts, pool_ref); // lightweight game_loop thread
 	});
 
 	loop {
@@ -60,52 +70,29 @@ fn main() {
 //	pool.wait(); // TODO: figure out how to sync this so that we can grab ownership of the pool safely
 }
 
-fn game_loop((render_context, physics_context): (RenderContext, PhysicsContext), pool: Arc<Box<ThreadPool>>) {
-	const RATE_INPUT:   u64 =  8333333; // 120 hz
-	const RATE_PHYSICS: u64 =  8333333; // 120 hz
-	const RATE_RENDER:  u64 = 16666666; // 60 hz
+fn game_loop(contexts: ContextType, pool: Arc<Box<ThreadPool>>) -> ! {
+	let time = time::precise_time_ns();
 
-	let mut last_time_input = time::precise_time_ns();
-	let mut last_time_physics = last_time_input;
-	let mut last_time_render = last_time_input;
-	let mut frame_number_input   = 0;
-	let mut frame_number_physics = 0;
-	let mut frame_number_render  = 0;
-
-	let rc = Arc::new(render_context);
-	let pc = Arc::new(physics_context);
+	let mut last_times: Vec<u64> = Vec::with_capacity(contexts.len());
+	for _ in 0..contexts.len() { last_times.push(time) }
 
 	loop {
 		let time = time::precise_time_ns();
 
-		while time - last_time_input > RATE_INPUT {
-			last_time_input += RATE_INPUT;
-			frame_number_input += 1;
-			pool.post(Box::new(move || {
-				handle_input(frame_number_input);
-			}));
-		}
-		while time - last_time_physics > RATE_PHYSICS {
-			last_time_physics += RATE_PHYSICS;
-			frame_number_physics += 1;
-			let local_pc = pc.clone();
-			pool.post(Box::new(move || {
-				local_pc.tick(frame_number_physics);
-			}));
-		}
-		while time - last_time_render > RATE_RENDER {
-			last_time_render += RATE_RENDER;
-			frame_number_render += 1;
-			let local_rc = rc.clone();
-			pool.post(Box::new(move || {
-				local_rc.tick(frame_number_render);
- 			}));
-		}
+		let iter = contexts.iter().zip(last_times.iter_mut());
 
+		for (context, last_time) in iter {
+			let rate = context.rate();
+
+			while time - *last_time > rate {
+				*last_time = *last_time + rate;
+
+				let local = context.clone();
+				pool.post(Box::new(move || {
+					local.tick();
+				}));
+			}
+		}
 		std::thread::yield_now();
 	}
-}
-
-fn handle_input(_frame_number: usize) {
-
 }

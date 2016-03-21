@@ -3,20 +3,19 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use context::{Context};
 
 
-pub struct PhysicsContext {
+pub struct InputContext {
 	frame_number: AtomicUsize,
 }
 
-impl PhysicsContext {
-	pub fn new() -> PhysicsContext {
-		PhysicsContext {
+impl InputContext {
+	pub fn new() -> InputContext {
+		InputContext {
 			frame_number: AtomicUsize::new(0),
 		}
 	}
-
 }
 
-impl Context for PhysicsContext {
+impl Context for InputContext {
 	fn rate(&self) -> u64 {
 		8333333 // 120 hz
 	}
