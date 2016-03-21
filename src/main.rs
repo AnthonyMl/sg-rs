@@ -35,7 +35,7 @@ fn main() {
 	const WIDTH: usize = 640;
 	const HEIGHT: usize = 480;
 
-	let (rc, mut rp) = render::render::create(WIDTH, HEIGHT); // main thread is ui thread
+	let (rc, mut rp) = render::create(WIDTH, HEIGHT); // main thread is ui thread
 	let pc = PhysicsContext::new();
 
 	const NUM_WORKER_THREADS: usize = 3;
