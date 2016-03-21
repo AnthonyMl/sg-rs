@@ -1,4 +1,5 @@
 use std::sync::{Arc};
+
 use crossbeam::sync::{MsQueue};
 use glium;
 use glium::{VertexBuffer, Surface};

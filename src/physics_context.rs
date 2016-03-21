@@ -13,7 +13,6 @@ impl PhysicsContext {
 			frame_number: AtomicUsize::new(0),
 		}
 	}
-
 }
 
 impl Context for PhysicsContext {
