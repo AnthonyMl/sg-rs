@@ -1,6 +1,6 @@
 pub enum RenderCommand {
 	ClearScreen {
-		frame_number: usize,
+		frame_counter: u64,
 	},
 	SwapBuffers,
 	DrawTriangle,

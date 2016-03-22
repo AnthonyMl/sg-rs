@@ -32,6 +32,8 @@ pub fn init() {
 		game_loop(context, pool_ref); // lightweight game_loop thread
 	});
 
+	// TODO: may need to be refactored to handle system events more frequently/(lower max potential latency)
+	//
 	loop {
 		if rp.handle_system_events() { break }
 

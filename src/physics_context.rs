@@ -1,16 +1,15 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
-
+use frame_counter::{FrameCounter};
 use context::{Context};
 
 
 pub struct PhysicsContext {
-	frame_number: AtomicUsize,
+	frame_counter: FrameCounter,
 }
 
 impl PhysicsContext {
 	pub fn new() -> PhysicsContext {
 		PhysicsContext {
-			frame_number: AtomicUsize::new(0),
+			frame_counter: FrameCounter::new(0),
 		}
 	}
 }
@@ -21,9 +20,6 @@ impl Context for PhysicsContext {
 	}
 
 	fn tick(&self) {
-		loop {
-			let v = self.frame_number.load(Ordering::Acquire);
-			if v == self.frame_number.compare_and_swap(v, v + 1, Ordering::Release) { break }
-		}
+		self.frame_counter.increment();
 	}
 }

@@ -1,22 +1,22 @@
 use std::sync::{Arc};
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crossbeam::sync::{MsQueue};
 
 use render::render_command::{RenderCommand};
 use context::{Context};
+use frame_counter::{FrameCounter};
 
 
 pub struct RenderContext {
 	q: Arc<MsQueue<RenderCommand>>,
-	frame_number: AtomicUsize,
+	frame_counter: FrameCounter,
 }
 
 impl RenderContext {
 	pub fn new(q: Arc<MsQueue<RenderCommand>>) -> RenderContext {
 		RenderContext {
 			q: q,
-			frame_number: AtomicUsize::new(0),
+			frame_counter: FrameCounter::new(0),
 		}
 	}
 
@@ -24,7 +24,7 @@ impl RenderContext {
 		self.q.push(RenderCommand::SwapBuffers);
 	}
 	pub fn clear_screen(&self) {
-		self.q.push(RenderCommand::ClearScreen{ frame_number: self.frame_number.load(Ordering::Relaxed) });
+		self.q.push(RenderCommand::ClearScreen{ frame_counter: self.frame_counter.get() });
 	}
 	pub fn draw_garbage(&self) {
 		self.q.push(RenderCommand::DrawTriangle);
@@ -37,10 +37,7 @@ impl Context for RenderContext {
 	}
 
 	fn tick(&self) {
-		loop {
-			let v = self.frame_number.load(Ordering::Acquire);
-			if v == self.frame_number.compare_and_swap(v, v + 1, Ordering::Release) { break }
-		}
+		self.frame_counter.increment();
 
 		self.clear_screen();
 

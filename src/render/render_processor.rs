@@ -13,8 +13,7 @@ use render::render_frame::{RenderFrame};
 use uniform_wrappers::{UMatrix4};
 
 
-// RP can internally track the frame_number by the number of swap_buffers calls
-// We can also remove clear calls if we clear in the swapbuffers (and replace our old frame objec with a new one)
+// TODO: We can remove clear calls if we clear in the swapbuffers (and replace our old frame objec with a new one)
 //
 pub struct RenderProcessor {
 	q: Arc<MsQueue<RenderCommand>>,
@@ -95,8 +94,8 @@ impl RenderProcessor {
 			if job.is_none() { break }
 
 			match job.unwrap() {
-				RenderCommand::ClearScreen{ frame_number } => {
-					let mut frame = RenderFrame::new(frame_number, self.context.draw());
+				RenderCommand::ClearScreen{ frame_counter } => {
+					let mut frame = RenderFrame::new(frame_counter, self.context.draw());
 
 					frame.draw_context.clear_color(0.125f32, 0.25f32, 0.5f32, 1.0f32);
 					frame.draw_context.clear_depth(1.0);

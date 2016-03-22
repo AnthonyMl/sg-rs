@@ -15,6 +15,7 @@ mod vertex3;
 mod camera;
 mod uniform_wrappers;
 mod game_loop;
+mod frame_counter;
 
 
 fn main() {

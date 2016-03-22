@@ -9,6 +9,8 @@ use input_context::{InputContext};
 use physics_context::{PhysicsContext};
 
 
+// TODO: maybe rename ContextType->Context and Context->IsContext or something like that?
+//
 pub type ContextType = Arc<Vec<Arc<Context + Send + Sync + 'static>>>;
 
 pub trait Context {
