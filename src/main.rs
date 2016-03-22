@@ -16,6 +16,7 @@ mod camera;
 mod uniform_wrappers;
 mod game_loop;
 mod frame_counter;
+mod model;
 
 
 fn main() {

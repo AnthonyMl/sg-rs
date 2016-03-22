@@ -2,12 +2,11 @@ use std::sync::{Arc};
 
 use crossbeam::sync::{MsQueue};
 use glium;
-use glium::{VertexBuffer, Surface};
-use glium::index::{PrimitiveType};
+use glium::{Surface};
 use glium::backend::glutin_backend::{GlutinFacade};
 
 use camera::{Camera};
-use vertex3::{Vertex3};
+use model::{Model};
 use render::render_command::{RenderCommand};
 use render::render_frame::{RenderFrame};
 use uniform_wrappers::{UMatrix4};
@@ -19,19 +18,14 @@ pub struct RenderProcessor {
 	q: Arc<MsQueue<RenderCommand>>,
 	context: GlutinFacade, // TODO: can we use a better type here
 	frame: Option<RenderFrame>, // maybe some sort of multiproc command q in the future
-	vertex_buffer: VertexBuffer<Vertex3>,
+	model: Model,
 	camera: Camera,
 	program: glium::Program,
 }
 
 impl RenderProcessor {
 	pub fn new(q: Arc<MsQueue<RenderCommand>>, context: GlutinFacade, width: usize, height: usize) -> RenderProcessor {
-		let triangle = vec![
-			Vertex3{ position: [-0.5, -0.5 , 0.0] },
-			Vertex3{ position: [ 0.0,  0.5 , 0.0] },
-			Vertex3{ position: [ 0.5, -0.25, 0.0] },
-		];
-		let vertex_buffer = VertexBuffer::new(&context, &triangle).unwrap();
+		let model = Model::new(&context);
 
 		let vertex_source = r#"
 			#version 140
@@ -59,7 +53,7 @@ impl RenderProcessor {
 			q: q,
 			context: context,
 			frame: None,
-			vertex_buffer: vertex_buffer,
+			model: model,
 			camera: Camera::new(width, height), // TODO: these shouldn't need to be passed around
 			program: program,
 		}
@@ -119,8 +113,8 @@ impl RenderProcessor {
 							};
 
 							rf.draw_context.draw(
-								&self.vertex_buffer,
-								&glium::index::NoIndices(PrimitiveType::TrianglesList),
+								&self.model.vertex_buffer,
+								&self.model.index_buffer,
 								&self.program,
 								&uniforms,
 								&Default::default()).unwrap();
