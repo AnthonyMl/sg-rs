@@ -1,20 +1,21 @@
-use cgmath::{Matrix4, Point3, Vector3, PerspectiveFov, Rad};
+use std::f32::consts::{FRAC_PI_3};
+
+use cgmath::{Matrix4, Point3, Vector3, PerspectiveFov, Rad, EuclideanVector};
 
 
 pub struct Camera {
-	_mtx_view: Matrix4<f32>,
-	_mtx_projection: Matrix4<f32>,
 	pub mtx_full: Matrix4<f32>,
 }
 
 impl Camera {
 	pub fn new(width: usize, height: usize) -> Camera {
-//		const FIELD_OF_VIEW: f32 = std::f32::consts::FRAC_PI_3; TODO: why doesnt this work
-		const FIELD_OF_VIEW: f32 = 1.0471975512f32;
+		const FIELD_OF_VIEW: f32 = FRAC_PI_3;
 
 		let eye = Point3::new(10.0f32, 10.0f32, 10.0f32);
 		let center = Point3::new(0f32, 0f32, 0f32);
-		let up = (center - eye).cross(Vector3::new(0f32, 1.0f32, 0f32));
+		let forward = (center - eye).normalize();
+		let right = forward.cross(Vector3::new(0f32, 1.0f32, 0f32));
+		let up = right.cross(forward);
 		let view = Matrix4::look_at(eye, center, up);
 
 		let projection = Matrix4::from(PerspectiveFov{
@@ -27,8 +28,6 @@ impl Camera {
 		let full = projection * view;
 
 		Camera {
-			_mtx_view: view,
-			_mtx_projection: projection,
 			mtx_full: full,
 		}
 	}
