@@ -11,15 +11,15 @@ impl Camera {
 	pub fn new(width: usize, height: usize) -> Camera {
 		const FIELD_OF_VIEW: f32 = FRAC_PI_3;
 
-		let eye = Point3::new(10.0f32, 10.0f32, 10.0f32);
-		let center = Point3::new(0f32, 0f32, 0f32);
-		let forward = (center - eye).normalize();
-		let right = forward.cross(Vector3::new(0f32, 1.0f32, 0f32));
-		let up = right.cross(forward);
-		let view = Matrix4::look_at(eye, center, up);
+		let eye		= Point3::new(10f32, 10f32, 10f32);
+		let center	= Point3::new(0f32, 0f32, 0f32);
+		let forward	= (center - eye).normalize();
+		let right	= forward.cross(Vector3::new(0f32, 1f32, 0f32));
+		let up		= right.cross(forward);
+		let view	= Matrix4::look_at(eye, center, up);
 
 		let projection = Matrix4::from(PerspectiveFov{
-			fovy: Rad{ s: FIELD_OF_VIEW},
+			fovy: Rad{ s: FIELD_OF_VIEW },
 			aspect: (width as f32) / (height as f32),
 			near: 1f32,
 			far: 100f32
