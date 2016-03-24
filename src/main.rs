@@ -5,6 +5,7 @@ extern crate glium;
 extern crate crossbeam;
 extern crate time;
 extern crate cgmath;
+extern crate tobj;
 
 mod context;
 mod render;

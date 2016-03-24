@@ -1,4 +1,3 @@
-
 #[derive(Copy, Clone)]
 pub struct Vertex3 {
 	pub position: [f32; 3],
