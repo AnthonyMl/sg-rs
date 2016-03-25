@@ -1,8 +1,8 @@
+use std::process;
 use std::sync::{Arc};
 
 use crossbeam::sync::{MsQueue};
-use glium;
-use glium::{Surface};
+use glium::{Surface, Program};
 use glium::backend::glutin_backend::{GlutinFacade};
 
 use camera::{Camera};
@@ -20,7 +20,7 @@ pub struct RenderProcessor {
 	frame: Option<RenderFrame>, // maybe some sort of multiproc command q in the future
 	model: Model,
 	camera: Camera,
-	program: glium::Program,
+	program: Program,
 }
 
 impl RenderProcessor {
@@ -31,23 +31,40 @@ impl RenderProcessor {
 			#version 140
 
 			in vec3 position;
+			in vec3 normal;
+
+			out vec3 v_normal;
 
 			uniform mat4 mvp;
 
 			void main() {
+				v_normal = normalize((mvp * vec4(normal, 0.0)).xyz);
 				gl_Position = mvp * vec4(position, 1.0);
 			}
 		"#;
 		let fragment_source = r#"
 			#version 140
 
+			in vec3 v_normal;
+
 			out vec4 color;
 
 			void main() {
-				color = vec4(0.5, 0.25, 0.125, 1.0);
+				float value = dot(v_normal, vec3(0.707, 0.707, 0.0));
+				float intensity = max(0.0, value);
+//				color = vec4(intensity, intensity, intensity, 1.0);
+				color = value > 0.0 ? vec4(0.5, 0.25, 0.125, 1.0) : vec4(1.0, 0.0, 0.0, 1.0);
 			}
 		"#;
-		let program = glium::Program::from_source(&context, vertex_source, fragment_source, None).unwrap();
+		// TODO: make sure constants are right
+
+		let program = match Program::from_source(&context, vertex_source, fragment_source, None) {
+			Ok(p) => p,
+			Err(e) => {
+				println!("Unable to compile shaders: {}", e);
+				process::exit(-3);
+			},
+		};
 
 		RenderProcessor {
 			q: q,

@@ -19,8 +19,8 @@ use context::{Context, ContextType};
 // 1 lightweight game loop thread (constantly yielding/sleeping)
 //
 pub fn init() {
-	const WIDTH: usize = 640;
-	const HEIGHT: usize = 480;
+	const WIDTH: usize = 1280;
+	const HEIGHT: usize = 800;
 
 	let (context, mut rp) = context::create(WIDTH, HEIGHT); // main thread is ui thread
 

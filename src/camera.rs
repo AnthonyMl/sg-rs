@@ -12,8 +12,8 @@ impl Camera {
 		const FIELD_OF_VIEW: f32 = FRAC_PI_3;
 		const DISTANCE: f32 = 10f32;
 
-		let eye		= Point3::new(DISTANCE, DISTANCE, DISTANCE);
-		let center	= Point3::new(0f32, 0f32, 0f32);
+		let eye		= Point3::new(0f32, 5f32, -DISTANCE);
+		let center	= Point3::new(0f32, 5f32, 0f32);
 		let forward	= (center - eye).normalize();
 		let right	= forward.cross(Vector3::new(0f32, 1f32, 0f32));
 		let up		= right.cross(forward);
