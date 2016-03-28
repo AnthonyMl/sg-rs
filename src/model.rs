@@ -32,18 +32,18 @@ impl Model {
 		let normals = if model.mesh.normals.is_empty() {
 			Model::calculate_normals(&model.mesh.positions, &model.mesh.indices)
 		} else {
-			model.mesh.normals
+			model.mesh.normals.chunks(3).map(|v| [v[0], v[1], v[2]]).collect()
 		};
 
 		// TODO: can we do a Vec::from_raw_parts or a transmute here
 		//
 		let mut vertices: Vec<Vertex3> = Vec::with_capacity(model.mesh.positions.len()/3);
-		let iterator = model.mesh.positions.chunks(3).zip(normals.chunks(3));
+		let iterator = model.mesh.positions.chunks(3).zip(normals);
 
 		for (v, n) in iterator {
 			vertices.push(Vertex3 {
 				position: [v[0], v[1], v[2]],
-				normal: [n[0], n[1], n[2]],
+				normal: n,
 			});
 		}
 
@@ -55,46 +55,40 @@ impl Model {
 		}
 	}
 
-	fn calculate_normals(vertices: &[f32], indices: &[u32]) -> Vec<f32> {
+	fn calculate_normals(vertices: &[f32], indices: &[u32]) -> Vec<[f32;3]> {
+		let mut face_normals: Vec<Vector3<f32>> = Vec::with_capacity(indices.len()/3);
+
 		let mut associated_tris: Vec<Vec<u32>> = Vec::with_capacity(vertices.len()/3);
-		for _ in vertices { associated_tris.push(Vec::new()) } // TODO: look up if this can be avoided
-		for (i, triangle) in indices.chunks(3).enumerate() {
-			for vertex in triangle {
+		for _ in 0..associated_tris.capacity() { associated_tris.push(Vec::new()) } // TODO: look up if this can be avoided
+
+		for (i, tri) in indices.chunks(3).enumerate() {
+			for vertex in tri {
 				associated_tris[*vertex as usize].push(i as u32);
+				// model.mesh.positions.chunks(3)[vertex] is used by model.mesh.indices.chunks(3)[i]
 			}
+
+			let points: Vec<Point3<f32>> = tri.iter().map(|&idx| {
+				let i = idx as usize;
+				let v = &vertices[(i*3)..((i+1)*3)];
+				Point3::new(v[0], v[1], v[2])
+			}).collect();
+			let ba = points[1] - points[0];
+			let ca = points[2] - points[0];
+
+			face_normals.push(ba.cross(ca).normalize());
 		}
 
 		let mut normals = Vec::with_capacity(vertices.len());
 
 		for index in 0..(vertices.len()/3) {
-			let mut normal = Vector3::new(0f32, 0f32, 0f32);
+			let normal = associated_tris[index].iter().fold(
+				Vector3::new(0f32, 0f32, 0f32), |acc, &i| {
+				acc + face_normals[i as usize]
+			});
 
-			for tri_index in &associated_tris[index] {
-				let tri =
-					&indices[
-						((tri_index   *3) as usize)..
-						(((tri_index+1)*3) as usize)];
+			let normal = normal.normalize();
 
-				let points: Vec<Point3<f32>> = tri.into_iter().map(|&p| {
-					let idx = p as usize;
-					let v = &vertices[(idx*3)..((idx+1)*3)];
-					Point3::new(v[0], v[1], v[2])
-				}).collect();
-
-				let (a, b, c) = (points[0], points[1], points[2]);
-
-				let ba = b - a;
-				let ca = c - a;
-
-				let addition = ca.cross(ba); // TODO: do we want to normalize here
-
-				normal = normal + addition;
-			}
-			normal = normal.normalize();
-
-			normals.push(normal.x);
-			normals.push(normal.y);
-			normals.push(normal.z);
+			normals.push([normal.x, normal.y, normal.z]);
 		}
 		normals
 	}

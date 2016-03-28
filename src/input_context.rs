@@ -1,5 +1,7 @@
+use std::sync::{Arc};
+
 use frame_counter::{FrameCounter};
-use context::{Context};
+use context::{Context, ContextType};
 
 
 pub struct InputContext {
@@ -19,7 +21,7 @@ impl Context for InputContext {
 		8333333 // 120 hz
 	}
 
-	fn tick(&self) {
+	fn tick(&self, _contexts: Arc<ContextType>) {
 		self.frame_counter.increment();
 	}
 }

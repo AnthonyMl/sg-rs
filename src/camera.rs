@@ -3,16 +3,17 @@ use std::f32::consts::{FRAC_PI_3};
 use cgmath::{Matrix4, Point3, Vector3, PerspectiveFov, Rad, EuclideanVector};
 
 
+#[derive(Clone)]
 pub struct Camera {
 	pub mtx_full: Matrix4<f32>,
 }
 
 impl Camera {
-	pub fn new(width: usize, height: usize) -> Camera {
+	pub fn new(width: u32, height: u32) -> Camera {
 		const FIELD_OF_VIEW: f32 = FRAC_PI_3;
 		const DISTANCE: f32 = 10f32;
 
-		let eye		= Point3::new(0f32, 5f32, -DISTANCE);
+		let eye		= Point3::new(0f32, 5f32, DISTANCE);
 		let center	= Point3::new(0f32, 5f32, 0f32);
 		let forward	= (center - eye).normalize();
 		let right	= forward.cross(Vector3::new(0f32, 1f32, 0f32));

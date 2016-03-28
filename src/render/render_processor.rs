@@ -2,10 +2,10 @@ use std::process;
 use std::sync::{Arc};
 
 use crossbeam::sync::{MsQueue};
-use glium::{Surface, Program};
+use glium::{Surface, Program, DrawParameters, Depth};
 use glium::backend::glutin_backend::{GlutinFacade};
+use glium::draw_parameters::{DepthTest};
 
-use camera::{Camera};
 use model::{Model};
 use render::render_command::{RenderCommand};
 use render::render_frame::{RenderFrame};
@@ -19,12 +19,11 @@ pub struct RenderProcessor {
 	context: GlutinFacade, // TODO: can we use a better type here
 	frame: Option<RenderFrame>, // maybe some sort of multiproc command q in the future
 	model: Model,
-	camera: Camera,
 	program: Program,
 }
 
 impl RenderProcessor {
-	pub fn new(q: Arc<MsQueue<RenderCommand>>, context: GlutinFacade, width: usize, height: usize) -> RenderProcessor {
+	pub fn new(q: Arc<MsQueue<RenderCommand>>, context: GlutinFacade) -> RenderProcessor {
 		let model = Model::new(&context);
 
 		let vertex_source = r#"
@@ -52,8 +51,8 @@ impl RenderProcessor {
 			void main() {
 				float value = dot(v_normal, vec3(0.707, 0.707, 0.0));
 				float intensity = max(0.0, value);
-//				color = vec4(intensity, intensity, intensity, 1.0);
-				color = value > 0.0 ? vec4(0.5, 0.25, 0.125, 1.0) : vec4(1.0, 0.0, 0.0, 1.0);
+				color = vec4(intensity, intensity, intensity, 1.0);
+//				color = value > 0.0 ? vec4(0.5, 0.25, 0.125, 1.0) : vec4(0.9, 0.45, 0.45, 1.0);
 			}
 		"#;
 		// TODO: make sure constants are right
@@ -71,7 +70,6 @@ impl RenderProcessor {
 			context: context,
 			frame: None,
 			model: model,
-			camera: Camera::new(width, height), // TODO: these shouldn't need to be passed around
 			program: program,
 		}
 	}
@@ -105,11 +103,13 @@ impl RenderProcessor {
 			if job.is_none() { break }
 
 			match job.unwrap() {
-				RenderCommand::ClearScreen{ frame_counter } => {
-					let mut frame = RenderFrame::new(frame_counter, self.context.draw());
+				RenderCommand::ClearScreen{ frame_counter, physics_frame } => {
+					let mut frame = RenderFrame::new(
+						frame_counter,
+						self.context.draw(),
+						physics_frame);
 
-					frame.draw_context.clear_color(0.125f32, 0.25f32, 0.5f32, 1.0f32);
-					frame.draw_context.clear_depth(1.0);
+					frame.draw_context.clear_color_and_depth((0.125f32, 0.25f32, 0.5f32, 1.0f32), 1.0);
 
 					self.frame = Some(frame);
 				},
@@ -126,7 +126,16 @@ impl RenderProcessor {
 					match self.frame {
 						Some(ref mut rf) => {
 							let uniforms = uniform! {
-								mvp: UMatrix4(self.camera.mtx_full),
+								mvp: UMatrix4(rf.physics_frame.camera.mtx_full),
+							};
+
+							let params = DrawParameters {
+								depth: Depth {
+									test: DepthTest::IfLess,
+									write: true,
+									.. Default::default()
+								},
+								.. Default::default()
 							};
 
 							rf.draw_context.draw(
@@ -134,7 +143,7 @@ impl RenderProcessor {
 								&self.model.index_buffer,
 								&self.program,
 								&uniforms,
-								&Default::default()).unwrap();
+								&params).unwrap();
 						},
 						None => ()
 					}

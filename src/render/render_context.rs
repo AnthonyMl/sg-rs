@@ -3,8 +3,9 @@ use std::sync::{Arc};
 use crossbeam::sync::{MsQueue};
 
 use render::render_command::{RenderCommand};
-use context::{Context};
+use context::{Context, ContextType};
 use frame_counter::{FrameCounter};
+use physics::{PhysicsFrame};
 
 
 pub struct RenderContext {
@@ -23,8 +24,11 @@ impl RenderContext {
 	pub fn swap_buffers(&self) {
 		self.q.push(RenderCommand::SwapBuffers);
 	}
-	pub fn clear_screen(&self) {
-		self.q.push(RenderCommand::ClearScreen{ frame_counter: self.frame_counter.get() });
+	pub fn clear_screen(&self, physics_frame: Arc<PhysicsFrame>) {
+		self.q.push(RenderCommand::ClearScreen{
+			frame_counter: self.frame_counter.get(),
+			physics_frame: physics_frame,
+		});
 	}
 	pub fn draw_garbage(&self) {
 		self.q.push(RenderCommand::DrawTriangle);
@@ -36,10 +40,12 @@ impl Context for RenderContext {
 		16666666
 	}
 
-	fn tick(&self) {
+	fn tick(&self, contexts: Arc<ContextType>) {
 		self.frame_counter.increment();
 
-		self.clear_screen();
+		let physics_frame = contexts.context_physics().get_frame();
+
+		self.clear_screen(physics_frame);
 
 		self.draw_garbage();
 

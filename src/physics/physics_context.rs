@@ -1,9 +1,7 @@
-use std::f32::consts::{PI};
 use std::sync::{Arc, RwLock};
 
 use frame_counter::{FrameCounter};
 use context::{Context, ContextType};
-use render::{RenderContext};
 use camera::{Camera};
 use physics::{PhysicsFrame};
 

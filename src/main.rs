@@ -9,7 +9,7 @@ extern crate tobj;
 
 mod context;
 mod render;
-mod physics_context;
+mod physics;
 mod input_context;
 mod thread_pool;
 mod vertex3;

@@ -6,34 +6,75 @@ use glium::{DisplayBuild};
 
 use render::{RenderContext, RenderProcessor};
 use input_context::{InputContext};
-use physics_context::{PhysicsContext};
+use physics::{PhysicsContext};
 
 
 // TODO: maybe rename ContextType->Context and Context->IsContext or something like that?
 //
-pub type ContextType = Arc<Vec<Arc<Context + Send + Sync + 'static>>>;
+//type ContextSubType = Context + Send + Sync + 'static;
+//pub type ContextType = Arc<ContextType_ + Send + Sync + 'static>;
+
+pub trait ContextType {
+	fn context_input(&self)   -> Arc<InputContext>;
+	fn context_physics(&self) -> Arc<PhysicsContext>;
+	fn context_render(&self)  -> Arc<RenderContext>;
+	fn contexts(&self)        -> &[Arc<Context + Send + Sync>];
+	fn len(&self)             -> usize;
+}
+
+struct ContextType_ {
+	context_input:   Arc<InputContext>,
+	context_physics: Arc<PhysicsContext>,
+	context_render:  Arc<RenderContext>,
+	contexts: [Arc<Context + Send + Sync>;3],
+}
+impl ContextType_ {
+	fn new(i: InputContext, p: PhysicsContext, r: RenderContext) -> ContextType_ {
+		let ai = Arc::new(i);
+		let ap = Arc::new(p);
+		let ar = Arc::new(r);
+		ContextType_ {
+			context_input:   ai.clone(),
+			context_physics: ap.clone(),
+			context_render:  ar.clone(),
+			contexts: [ai.clone(), ap.clone(), ar.clone()]
+		}
+	}
+}
+impl ContextType for ContextType_ {
+	fn context_input  (&self) -> Arc<InputContext>   { self.context_input  .clone() }
+	fn context_physics(&self) -> Arc<PhysicsContext> { self.context_physics.clone() }
+	fn context_render (&self) -> Arc<RenderContext>  { self.context_render .clone() }
+	fn contexts       (&self) -> &[Arc<Context + Send + Sync>] { self.contexts.as_ref() }
+	fn len            (&self) -> usize { self.contexts.len() }
+}
+unsafe impl Send for ContextType_ {}
+unsafe impl Sync for ContextType_ {}
 
 pub trait Context {
 	fn rate(&self) -> u64;
-	fn tick(&self);
+	fn tick(&self, Arc<ContextType>); // TODO try to remove Arc dependency
 }
 
-pub fn create(width: usize, height: usize) -> (ContextType, RenderProcessor) {
-	let context = WindowBuilder::new()
-		.with_dimensions(width as u32, height as u32)
+// TODO: try to remove Arc dependency
+//
+pub fn create(width: u32, height: u32) -> (Arc<ContextType + Send + Sync>, RenderProcessor) {
+	let glium_context = WindowBuilder::new()
+		.with_dimensions(width, height)
 		.with_title(format!("SG"))
+		.with_depth_buffer(24)
 		.build_glium().unwrap();
 
 	let q = Arc::new(MsQueue::new());
 
-	let contexts: ContextType = Arc::new(vec![
-		Arc::new(InputContext::new()),
-		Arc::new(PhysicsContext::new()),
-		Arc::new(RenderContext::new(q.clone())),
-	]);
-
 	(
-		contexts,
-		RenderProcessor::new(q.clone(), context, width, height),
+		Arc::new(
+			ContextType_::new(
+				InputContext::new(),
+				PhysicsContext::new(width, height),
+				RenderContext::new(q.clone())
+			)
+		),
+		RenderProcessor::new(q.clone(), glium_context),
 	)
 }
