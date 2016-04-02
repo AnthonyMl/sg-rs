@@ -57,9 +57,7 @@ impl Model {
 
 	fn calculate_normals(vertices: &[f32], indices: &[u32]) -> Vec<[f32;3]> {
 		let mut face_normals: Vec<Vector3<f32>> = Vec::with_capacity(indices.len()/3);
-
-		let mut associated_tris: Vec<Vec<u32>> = Vec::with_capacity(vertices.len()/3);
-		for _ in 0..associated_tris.capacity() { associated_tris.push(Vec::new()) } // TODO: look up if this can be avoided
+		let mut associated_tris: Vec<Vec<u32>> = (0..(vertices.len()/3)).map(|_| Vec::new()).collect();
 
 		for (i, tri) in indices.chunks(3).enumerate() {
 			for vertex in tri {
