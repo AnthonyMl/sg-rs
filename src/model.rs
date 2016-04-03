@@ -80,9 +80,9 @@ impl Model {
 
 		for index in 0..(vertices.len()/3) {
 			let normal = associated_tris[index].iter().fold(
-				Vector3::new(0f32, 0f32, 0f32), |acc, &i| {
-				acc + face_normals[i as usize]
-			});
+				Vector3::new(0f32, 0f32, 0f32),
+				|acc, &i| { acc + face_normals[i as usize] }
+			);
 
 			let normal = normal.normalize();
 
