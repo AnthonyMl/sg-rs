@@ -16,7 +16,7 @@ pub struct Model {
 
 impl Model {
 	pub fn new(context: &GlutinFacade) -> Model {
-		const MODEL_PATH_STRING: &'static str = "../data/buddha.obj";
+		const MODEL_PATH_STRING: &'static str = "./data/buddha.obj";
 		let path = Path::new(MODEL_PATH_STRING);
 
 		let model = match tobj::load_obj(path) {
