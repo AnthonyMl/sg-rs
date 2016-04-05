@@ -2,6 +2,7 @@ use cgmath::{Matrix4};
 use glium::uniforms::{AsUniformValue, UniformValue};
 
 
+#[derive(Clone)]
 pub struct UMatrix4(pub Matrix4<f32>);
 
 impl AsUniformValue for UMatrix4 {

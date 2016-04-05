@@ -18,6 +18,7 @@ mod uniform_wrappers;
 mod game_loop;
 mod frame_counter;
 mod model;
+mod scene;
 
 
 fn main() {

@@ -15,10 +15,8 @@ pub struct Model {
 }
 
 impl Model {
-	pub fn new(context: &GlutinFacade) -> Model {
-		const MODEL_PATH_STRING: &'static str = "./data/buddha.obj";
-		let path = Path::new(MODEL_PATH_STRING);
-		let error_message = &format!("Unable to load Model({})", MODEL_PATH_STRING);
+	pub fn new(context: &GlutinFacade, path: &Path) -> Model {
+		let error_message = &format!("Unable to load Model({})", path.to_str().unwrap());
 
 		let model: tobj::Model = tobj::load_obj(path).expect(error_message).0.pop().expect(error_message);
 

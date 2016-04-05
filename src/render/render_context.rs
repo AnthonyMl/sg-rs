@@ -3,9 +3,9 @@ use std::sync::{Arc};
 use crossbeam::sync::{MsQueue};
 
 use render::render_command::{RenderCommand};
+use render::render_frame::{RenderFrame};
 use context::{Context, ContextType};
 use frame_counter::{FrameCounter};
-use physics::{PhysicsFrame};
 
 
 pub struct RenderContext {
@@ -21,17 +21,20 @@ impl RenderContext {
 		}
 	}
 
-	pub fn swap_buffers(&self) {
-		self.q.push(RenderCommand::SwapBuffers);
+	fn clear_screen(&self, contexts: Arc<ContextType>) {
+		self.q.push(RenderCommand::ClearScreen{ render_frame: RenderFrame::new(
+			self.frame_counter.get(),
+			contexts.context_physics().get_frame()
+		)});
 	}
-	pub fn clear_screen(&self, physics_frame: Arc<PhysicsFrame>) {
-		self.q.push(RenderCommand::ClearScreen{
-			frame_counter: self.frame_counter.get(),
-			physics_frame: physics_frame,
-		});
+	fn swap_buffers(&self) {
+		self.q.push(RenderCommand::SwapBuffers{ frame_counter: self.frame_counter.get() });
 	}
-	pub fn draw_garbage(&self) {
-		self.q.push(RenderCommand::DrawTriangle);
+	fn draw_scene(&self) {
+		self.q.push(RenderCommand::DrawScene{ frame_counter: self.frame_counter.get() });
+	}
+	fn draw_player(&self) {
+		self.q.push(RenderCommand::DrawPlayer{ frame_counter: self.frame_counter.get() });
 	}
 }
 
@@ -43,11 +46,11 @@ impl Context for RenderContext {
 	fn tick(&self, contexts: Arc<ContextType>) {
 		self.frame_counter.increment();
 
-		let physics_frame = contexts.context_physics().get_frame();
+		self.clear_screen(contexts);
 
-		self.clear_screen(physics_frame);
+		self.draw_scene();
 
-		self.draw_garbage();
+		self.draw_player();
 
 		self.swap_buffers();
 	}
