@@ -113,6 +113,30 @@ impl RenderProcessor {
 	}
 
 	pub fn handle_render_commands(&mut self) {
+
+		macro_rules! draw_model {
+			($model:expr, $frame_counter:expr) => {{
+				// TODO: do something about this terrible syntax
+				// and try to dump the macro
+				//
+				let mut a = self.frames.get_mut(&$frame_counter).unwrap();
+				let rf = &a.0;
+				let mut dc = &mut a.1;
+
+				let u = rf.uniforms.clone();
+				let uniforms = uniform! {
+					mvp: u.mvp,
+				};
+
+				dc.draw(
+					&$model.vertex_buffer,
+					&$model.index_buffer,
+					&self.program,
+					&uniforms,
+					&self.draw_parameters).unwrap();
+			}}
+		}
+
 		loop {
 			let job = self.q.try_pop();
 
@@ -130,40 +154,10 @@ impl RenderProcessor {
 					dc.set_finish().unwrap();
 				},
 				RenderCommand::DrawScene{ frame_counter } => {
-					// TODO: do something about this repetition and terrible syntax
-					//
-					let mut a = self.frames.get_mut(&frame_counter).unwrap();
-					let rf = &a.0;
-					let mut dc = &mut a.1;
-
-					let u = rf.uniforms.clone();
-					let uniforms = uniform! {
-						mvp: u.mvp,
-					};
-
-					dc.draw(
-						&self.scene.model.vertex_buffer,
-						&self.scene.model.index_buffer,
-						&self.program,
-						&uniforms,
-						&self.draw_parameters).unwrap();
+					draw_model!(&self.scene.model, frame_counter);
 				},
 				RenderCommand::DrawPlayer{ frame_counter } => {
-					let mut a = self.frames.get_mut(&frame_counter).unwrap();
-					let rf = &a.0;
-					let mut dc = &mut a.1;
-
-					let u = rf.uniforms.clone();
-					let uniforms = uniform! {
-						mvp: u.mvp,
-					};
-
-					dc.draw(
-						&self.player.vertex_buffer,
-						&self.player.index_buffer,
-						&self.program,
-						&uniforms,
-						&self.draw_parameters).unwrap();
+					draw_model!(&self.player, frame_counter);
 				},
 			}
 		}
