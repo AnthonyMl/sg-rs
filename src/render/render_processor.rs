@@ -5,6 +5,7 @@ use std::collections::{HashMap};
 
 use crossbeam::sync::{MsQueue};
 use glium::{Surface, Program, DrawParameters, Depth, Frame};
+use glium::glutin::{Event, VirtualKeyCode, ElementState};
 use glium::backend::glutin_backend::{GlutinFacade};
 use glium::draw_parameters::{DepthTest};
 
@@ -94,8 +95,6 @@ impl RenderProcessor {
 	// TODO: should std::process::exit(i32) be used instead?
 	//
 	pub fn handle_system_events(&self) -> Option<Vec<InputEvent>> {
-		use glium::glutin::{Event, VirtualKeyCode, ElementState};
-
 		let mut out = Vec::new();
 
 		for event in self.context.poll_events() {
