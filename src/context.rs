@@ -26,7 +26,7 @@ struct ContextType_ {
 	context_input:   Arc<InputContext>,
 	context_physics: Arc<PhysicsContext>,
 	context_render:  Arc<RenderContext>,
-	contexts: [Arc<Context + Send + Sync>;3],
+	contexts: [Arc<Context + Send + Sync>; 3],
 }
 impl ContextType_ {
 	fn new(q: Arc<MsQueue<RenderCommand>>,width: u32, height: u32) -> ContextType_ {
@@ -55,7 +55,9 @@ unsafe impl Sync for ContextType_ {}
 pub trait Context {
 	fn rate(&self) -> u64;
 	fn tick(&self, Arc<ContextType>); // TODO try to remove Arc dependency
-	fn ready_to_tick(&self) -> bool;
+	fn is_ready(&self) -> bool;
+	fn pre_tick(&self);
+	fn post_tick(&self);
 }
 
 // TODO: try to remove Arc dependency

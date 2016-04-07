@@ -68,14 +68,16 @@ fn game_loop(contexts: Arc<ContextType + Send + Sync>, pool: Arc<Box<ThreadPool>
 			let rate = context.rate();
 
 			while time - *last_time > rate {
-				if !context.ready_to_tick() { continue 'next_context}
+				if !context.is_ready() { continue 'next_context}
 
 				*last_time = *last_time + rate;
 
 				let local_context  = context.clone();
 				let local_contexts = contexts.clone();
 				pool.post(Box::new(move || {
+					local_context.pre_tick();
 					local_context.tick(local_contexts);
+					local_context.post_tick();
 				}));
 			}
 		}

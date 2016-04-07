@@ -1,37 +1,33 @@
-use std::sync::{Arc, RwLock};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc};
 
 use cgmath::{Vector3, Point3};
 
-use frame_counter::{FrameCounter};
 use context::{Context, ContextType};
 use camera::{Camera};
 use physics::{PhysicsFrame};
 use constants::{NANOSECONDS_PER_SECOND};
+use context_state::{ContextState, ContextStateTrait};
 
 
 const FREQUENCY: u64 = 120; // ticks/second
 
+// TODO: remove pub
 pub struct PhysicsContext {
-	frame_counter: FrameCounter,
-	frame: RwLock<Arc<PhysicsFrame>>,
-	ready_lock: AtomicBool,
+	state: ContextState<PhysicsFrame>
 }
 
 impl PhysicsContext {
 	pub fn new(width: u32, height: u32) -> PhysicsContext {
 		PhysicsContext {
-			frame_counter: FrameCounter::new(0),
-			frame: RwLock::new(Arc::new(PhysicsFrame {
+			state: ContextState::new( PhysicsFrame {
 				camera: Camera::new(width, height),
-				player_position: Point3::new(0f64, 0f64, 0f64),
-			})),
-			ready_lock: AtomicBool::new(true),
+				player_position: Point3::new(0f64, 1f64, 0f64),
+			}),
 		}
 	}
 
 	pub fn get_frame(&self) -> Arc<PhysicsFrame> {
-		let t_n1 = self.frame.read().unwrap();
+		let t_n1 = self.state.frame.read().unwrap();
 
 		(*t_n1).clone()
 	}
@@ -43,8 +39,6 @@ impl Context for PhysicsContext {
 	}
 
 	fn tick(&self, contexts: Arc<ContextType>) {
-		let _frame_counter = self.frame_counter.increment();
-
 		let mut acceleration = Vector3::new(0f64, 0f64, 0f64);
 
 		// last InputFrame wins
@@ -60,10 +54,10 @@ impl Context for PhysicsContext {
 
 		let new_frame = Arc::new({
 			let player_position = { // The locks sort of show in what way the state dependencies are separated
-				let last_frame = self.frame.read().unwrap().clone();
+				let last_frame = self.state.frame.read().unwrap().clone();
 				last_frame.player_position + acceleration
 			};
-			let camera = self.frame.read().unwrap().camera.clone();
+			let camera = self.state.frame.read().unwrap().camera.clone();
 
 			PhysicsFrame {
 				camera: camera,
@@ -72,13 +66,12 @@ impl Context for PhysicsContext {
 		});
 
 		{
-			let mut self_frame_ref = self.frame.write().unwrap();
+			let mut self_frame_ref = self.state.frame.write().unwrap();
 			*self_frame_ref = new_frame;
 		}
-		self.ready_lock.store(true, Ordering::Relaxed);
 	}
 
-	fn ready_to_tick(&self) -> bool {
-		self.ready_lock.compare_and_swap(true, false, Ordering::Relaxed)
-	}
+	fn is_ready(&self) -> bool { self.state.is_ready() }
+	fn pre_tick(&self)         { self.state.frame_counter.increment(); }
+	fn post_tick(&self)        { self.state.end_tick(); }
 }
