@@ -4,7 +4,7 @@ use crossbeam::sync::{MsQueue};
 use glium::glutin::{WindowBuilder};
 use glium::{DisplayBuild};
 
-use render::{RenderContext, RenderProcessor};
+use render::{RenderContext, RenderProcessor, RenderCommand};
 use input_context::{InputContext};
 use physics::{PhysicsContext};
 
@@ -29,10 +29,11 @@ struct ContextType_ {
 	contexts: [Arc<Context + Send + Sync>;3],
 }
 impl ContextType_ {
-	fn new(i: InputContext, p: PhysicsContext, r: RenderContext) -> ContextType_ {
-		let ai = Arc::new(i);
-		let ap = Arc::new(p);
-		let ar = Arc::new(r);
+	fn new(q: Arc<MsQueue<RenderCommand>>,width: u32, height: u32) -> ContextType_ {
+		let ai = Arc::new(InputContext::new());
+		let ap = Arc::new(PhysicsContext::new(width, height));
+		let ar = Arc::new(RenderContext::new(q));
+
 		ContextType_ {
 			context_input:   ai.clone(),
 			context_physics: ap.clone(),
@@ -54,6 +55,7 @@ unsafe impl Sync for ContextType_ {}
 pub trait Context {
 	fn rate(&self) -> u64;
 	fn tick(&self, Arc<ContextType>); // TODO try to remove Arc dependency
+	fn ready_to_tick(&self) -> bool;
 }
 
 // TODO: try to remove Arc dependency
@@ -70,9 +72,9 @@ pub fn create(width: u32, height: u32) -> (Arc<ContextType + Send + Sync>, Rende
 	(
 		Arc::new(
 			ContextType_::new(
-				InputContext::new(),
-				PhysicsContext::new(width, height),
-				RenderContext::new(q.clone())
+				q.clone(),
+				width,
+				height
 			)
 		),
 		RenderProcessor::new(q.clone(), glium_context),

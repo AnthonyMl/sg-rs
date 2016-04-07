@@ -26,24 +26,29 @@ pub fn init() {
 
 	const NUM_WORKER_THREADS: usize = 3;
 	let pool = Arc::new(Box::new(ThreadPool::new(NUM_WORKER_THREADS)));
-	let pool_ref = pool.clone();
-	let context_ref = context.clone();
 
-	thread::spawn(move || {
-		game_loop(context_ref, pool_ref); // lightweight game_loop thread
-	});
+	{
+		let pool_ref = pool.clone();
+		let context_ref = context.clone();
+
+		thread::spawn(move || {
+			game_loop(context_ref, pool_ref); // lightweight game_loop thread
+		});
+	}
 
 	// TODO: may need to be refactored to handle system events more frequently/(lower max potential latency)
 	//
 	loop {
-		if rp.handle_system_events() { break }
+		match rp.handle_system_events() {
+			Some(es) => context.context_input().post_input_events(es),
+			None     => break,
+		};
 
 		rp.handle_render_commands();
 
-		match pool.steal() {
-			Some(f) => f(),
-			None => ()
-		}
+		// TODO: only do this if we have no/few render commands (or low time spent on render commands)
+		//
+		if let Some(f) = pool.steal() { f() }
 	}
 //	pool.wait(); // TODO: figure out how to sync this so that we can grab ownership of the pool safely
 }
@@ -51,16 +56,20 @@ pub fn init() {
 fn game_loop(contexts: Arc<ContextType + Send + Sync>, pool: Arc<Box<ThreadPool>>) -> ! {
 	let time = time::precise_time_ns();
 
+	// TODO: can this be refactored into one line
+	//
 	let mut last_times: Vec<u64> = Vec::with_capacity(contexts.len());
 	for _ in 0..contexts.len() { last_times.push(time) }
 
 	loop {
 		let time = time::precise_time_ns();
 
-		for (context, last_time) in contexts.contexts().into_iter().zip(last_times.iter_mut()) {
+		'next_context: for (context, last_time) in contexts.contexts().into_iter().zip(last_times.iter_mut()) {
 			let rate = context.rate();
 
 			while time - *last_time > rate {
+				if !context.ready_to_tick() { continue 'next_context}
+
 				*last_time = *last_time + rate;
 
 				let local_context  = context.clone();

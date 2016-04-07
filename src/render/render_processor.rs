@@ -10,8 +10,8 @@ use glium::draw_parameters::{DepthTest};
 
 use model::{Model};
 use render::render_command::{RenderCommand};
-use render::render_frame::{RenderFrame};
 use scene::{Scene};
+use input_event::{InputEvent};
 
 
 // TODO: We can remove clear calls if we clear in the swapbuffers (and replace our old frame objec with a new one)
@@ -19,7 +19,7 @@ use scene::{Scene};
 pub struct RenderProcessor {
 	q: Arc<MsQueue<RenderCommand>>,
 	context: GlutinFacade, // TODO: can we use a better type here
-	frames: HashMap<u64, (RenderFrame, Frame)>,
+	frames: HashMap<u64, Frame>,
 	player: Model,
 	scene: Scene,
 	program: Program,
@@ -93,71 +93,80 @@ impl RenderProcessor {
 	// returns true to signal caller to exit program and event loop
 	// TODO: should std::process::exit(i32) be used instead?
 	//
-	pub fn handle_system_events(&self) -> bool {
-		use glium::glutin::{Event, VirtualKeyCode};
+	pub fn handle_system_events(&self) -> Option<Vec<InputEvent>> {
+		use glium::glutin::{Event, VirtualKeyCode, ElementState};
+
+		let mut out = Vec::new();
 
 		for event in self.context.poll_events() {
 			match event {
 				Event::Closed => {
 					println!("Exiting due to quit event");
-					return true;
+					out.push(InputEvent::Quit);
+					return None;
 				},
 				Event::KeyboardInput(_, _, Some(VirtualKeyCode::Escape)) => {
 					println!("Exiting due to escape key");
-					return true;
+					return None;
+				},
+				Event::KeyboardInput(state, _, Some(key_code)) => {
+					out.push(InputEvent::KeyboardInput {
+						pressed: state == ElementState::Pressed,
+						id: key_code,
+					});
 				},
 				_ => ()
 			}
 		}
-		false
+		Some(out)
 	}
 
 	pub fn handle_render_commands(&mut self) {
 
+		// macro required because we want to pass different models and use mut member variables
+		//
 		macro_rules! draw_model {
-			($model:expr, $frame_counter:expr) => {{
+			($model:expr, $frame_counter:expr, $uniforms:expr) => {{
 				// TODO: do something about this terrible syntax
 				// and try to dump the macro
 				//
-				let mut a = self.frames.get_mut(&$frame_counter).unwrap();
-				let rf = &a.0;
-				let mut dc = &mut a.1;
+				let mut frame = self.frames.get_mut(&$frame_counter).unwrap();
 
-				let u = rf.uniforms.clone();
-				let uniforms = uniform! {
-					mvp: u.mvp,
+				let uniform_buffer = uniform! {
+					mvp: $uniforms.mvp,
 				};
 
-				dc.draw(
+				frame.draw(
 					&$model.vertex_buffer,
 					&$model.index_buffer,
 					&self.program,
-					&uniforms,
+					&uniform_buffer,
 					&self.draw_parameters).unwrap();
 			}}
 		}
 
 		loop {
-			let job = self.q.try_pop();
+			let job = match self.q.try_pop() {
+				Some(j) => j,
+				None    => break,
+			};
 
-			if job.is_none() { break }
-
-			match job.unwrap() {
+			match job {
 				RenderCommand::ClearScreen{ render_frame } => {
 					let mut frame = self.context.draw();
 					frame.clear_color_and_depth((0.125f32, 0.25f32, 0.5f32, 1.0f32), 1.0);
-					self.frames.insert(render_frame.frame_counter, (render_frame, frame));
+					self.frames.insert(render_frame.frame_counter, frame);
 				},
 				RenderCommand::SwapBuffers{ frame_counter } => {
-					let (_, mut dc) = self.frames.remove(&frame_counter).unwrap();
+					let mut frame = self.frames.remove(&frame_counter).unwrap();
 
-					dc.set_finish().unwrap();
+					frame.set_finish().unwrap();
 				},
-				RenderCommand::DrawScene{ frame_counter } => {
-					draw_model!(&self.scene.model, frame_counter);
+				RenderCommand::DrawScene{ frame_counter, uniforms } => {
+					draw_model!(&self.scene.model, frame_counter, uniforms);
 				},
-				RenderCommand::DrawPlayer{ frame_counter } => {
-					draw_model!(&self.player, frame_counter);
+				RenderCommand::DrawPlayer{ frame_counter, uniforms } => {
+					draw_model!(&self.player, frame_counter, uniforms);
 				},
 			}
 		}

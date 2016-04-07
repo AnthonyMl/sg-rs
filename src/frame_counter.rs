@@ -16,10 +16,12 @@ impl FrameCounter {
 		self.counter.load(Ordering::Relaxed) as u64
 	}
 
-	pub fn increment(&self) {
+	pub fn increment(&self) -> u64 {
 		loop {
 			let v = self.counter.load(Ordering::Acquire);
-			if v == self.counter.compare_and_swap(v, v + 1, Ordering::Release) { break }
+			if v == self.counter.compare_and_swap(v, v + 1, Ordering::Release) {
+				return v as u64;
+			}
 		}
 	}
 }

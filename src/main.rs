@@ -19,6 +19,12 @@ mod game_loop;
 mod frame_counter;
 mod model;
 mod scene;
+mod input_event;
+mod input_frame;
+mod input_map;
+mod action_state;
+mod constants;
+mod keyboard_state;
 
 
 fn main() {
