@@ -6,7 +6,7 @@ use context::{Context, ContextType};
 use camera::{Camera};
 use physics::{PhysicsFrame};
 use constants::{NANOSECONDS_PER_SECOND};
-use context_state::{ContextState};
+use context_state::{ContextState, ContextStateProxy};
 
 
 const FREQUENCY: u64 = 120; // ticks/second
@@ -66,7 +66,5 @@ impl Context for PhysicsContext {
 		self.state.set_frame(new_frame);
 	}
 
-	fn is_ready(&self) -> bool { self.state.is_ready() }
-	fn pre_tick(&self)         { self.state.increment(); }
-	fn post_tick(&self)        { self.state.end_tick(); }
+	fn state(&self) -> &ContextStateProxy { &self.state }
 }

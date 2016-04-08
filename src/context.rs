@@ -7,6 +7,7 @@ use glium::{DisplayBuild};
 use render::{RenderContext, RenderProcessor, RenderCommand};
 use input_context::{InputContext};
 use physics::{PhysicsContext};
+use context_state::{ContextStateProxy};
 
 
 // TODO: maybe rename ContextType->Context and Context->IsContext or something like that?
@@ -55,9 +56,8 @@ unsafe impl Sync for ContextType_ {}
 pub trait Context {
 	fn rate(&self) -> u64;
 	fn tick(&self, Arc<ContextType>); // TODO try to remove Arc dependency
-	fn is_ready(&self) -> bool;
-	fn pre_tick(&self);
-	fn post_tick(&self);
+
+	fn state(&self) -> &ContextStateProxy;
 }
 
 // TODO: try to remove Arc dependency

@@ -6,16 +6,18 @@ use cgmath::{Vector3, Matrix4};
 use render::render_command::{RenderCommand};
 use render::render_frame::{RenderFrame};
 use context::{Context, ContextType};
-use context_state::{ContextState};
+use context_state::{ContextState, ContextStateProxy};
 use constants::{NANOSECONDS_PER_SECOND};
 use uniform_wrappers::{UMatrix4};
 
 
 const FREQUENCY: u64 = 60;
 
+type RenderState = ContextState<()>;
+
 pub struct RenderContext {
 	q: Arc<MsQueue<RenderCommand>>,
-	state: ContextState<()>,
+	state: RenderState,
 }
 
 impl RenderContext {
@@ -81,7 +83,5 @@ impl Context for RenderContext {
 		self.swap_buffers(&frame);
 	}
 
-	fn is_ready(&self) -> bool { self.state.is_ready() }
-	fn pre_tick(&self)         { self.state.increment(); }
-	fn post_tick(&self)        { self.state.end_tick(); }
+	fn state(&self) -> &ContextStateProxy { &self.state }
 }

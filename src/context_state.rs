@@ -25,18 +25,6 @@ impl<T> ContextState<T> {
 		self.frame_counter.get()
 	}
 
-	pub fn increment(&self) -> u64 {
-		self.frame_counter.increment()
-	}
-
-	pub fn is_ready(&self) -> bool {
-		self.ready_lock.compare_and_swap(true, false, Ordering::Relaxed)
-	}
-
-	pub fn end_tick(&self) {
-		self.ready_lock.store(true, Ordering::Relaxed);
-	}
-
 	pub fn frame(&self) -> Arc<T> {
 		self.frame.read().unwrap().clone()
 	}
@@ -45,4 +33,30 @@ impl<T> ContextState<T> {
 		let mut frame_write = self.frame.write().unwrap();
 		*frame_write = frame;
 	}
+
+	fn is_ready(&self) -> bool {
+		self.ready_lock.compare_and_swap(true, false, Ordering::Relaxed)
+	}
+
+	fn increment(&self) -> u64 {
+		self.frame_counter.increment()
+	}
+
+	fn release_ready_lock(&self) {
+		self.ready_lock.store(true, Ordering::Relaxed);
+	}
+}
+
+pub trait ContextStateProxy {
+	fn is_ready(&self) -> bool;
+	fn pre_tick(&self);
+	fn post_tick(&self);
+}
+
+impl<T> ContextStateProxy for ContextState<T> {
+	fn is_ready(&self) -> bool { self.is_ready() }
+
+	fn pre_tick(&self) { self.increment(); }
+
+	fn post_tick(&self) { self.release_ready_lock(); }
 }

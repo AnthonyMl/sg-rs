@@ -11,7 +11,7 @@ use input_map::{InputMap};
 use action_state::{ActionState};
 use constants::{NANOSECONDS_PER_SECOND};
 use keyboard_state::{KeyboardState};
-use context_state::{ContextState};
+use context_state::{ContextState, ContextStateProxy};
 
 
 const FREQUENCY: u64 = 120;
@@ -122,7 +122,5 @@ impl Context for InputContext {
 		self.output_q.push(frame);
 	}
 
-	fn is_ready(&self) -> bool { self.state.is_ready() }
-	fn pre_tick(&self)         { self.state.increment(); }
-	fn post_tick(&self)        { self.state.end_tick(); }
+	fn state(&self) -> &ContextStateProxy { &self.state }
 }
