@@ -6,7 +6,7 @@ use context::{Context, ContextType};
 use camera::{Camera};
 use physics::{PhysicsFrame};
 use constants::{NANOSECONDS_PER_SECOND};
-use context_state::{ContextState, ContextStateTrait};
+use context_state::{ContextState};
 
 
 const FREQUENCY: u64 = 120; // ticks/second

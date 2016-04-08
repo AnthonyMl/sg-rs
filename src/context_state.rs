@@ -4,11 +4,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use frame_counter::{FrameCounter};
 
 
-pub trait ContextStateTrait {
-	fn is_ready(&self) -> bool;
-	fn end_tick(&self);
-}
-
 // TODO: do something different if T is unsized
 //
 pub struct ContextState<T> {
@@ -50,9 +45,4 @@ impl<T> ContextState<T> {
 		let mut frame_write = self.frame.write().unwrap();
 		*frame_write = frame;
 	}
-}
-
-impl<T> ContextStateTrait for ContextState<T> {
-	fn is_ready(&self) -> bool { self.is_ready() }
-	fn end_tick(&self) { self.end_tick() }
 }

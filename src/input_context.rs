@@ -11,7 +11,7 @@ use input_map::{InputMap};
 use action_state::{ActionState};
 use constants::{NANOSECONDS_PER_SECOND};
 use keyboard_state::{KeyboardState};
-use context_state::{ContextState, ContextStateTrait};
+use context_state::{ContextState};
 
 
 const FREQUENCY: u64 = 120;

@@ -6,7 +6,7 @@ use cgmath::{Vector3, Matrix4};
 use render::render_command::{RenderCommand};
 use render::render_frame::{RenderFrame};
 use context::{Context, ContextType};
-use context_state::{ContextState, ContextStateTrait};
+use context_state::{ContextState};
 use constants::{NANOSECONDS_PER_SECOND};
 use uniform_wrappers::{UMatrix4};
 
