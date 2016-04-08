@@ -28,20 +28,20 @@ impl RenderContext {
 
 	fn clear_screen(&self, contexts: Arc<ContextType>) -> Arc<RenderFrame> {
 		let render_frame = Arc::new(RenderFrame::new(
-			self.state.frame_counter.get(),
+			self.state.frame_counter(),
 			contexts.context_physics().get_frame()
 		));
 		self.q.push(RenderCommand::ClearScreen{ render_frame: render_frame.clone() });
 		render_frame
 	}
 
-	fn swap_buffers(&self) {
-		self.q.push(RenderCommand::SwapBuffers{ frame_counter: self.state.frame_counter.get() });
+	fn swap_buffers(&self, frame: &Arc<RenderFrame>) {
+		self.q.push(RenderCommand::SwapBuffers{ frame_counter: frame.frame_counter });
 	}
 
 	fn draw_scene(&self, frame: &mut Arc<RenderFrame>) {
 		self.q.push(RenderCommand::DrawScene{
-			frame_counter: self.state.frame_counter.get(),
+			frame_counter: frame.frame_counter,
 			uniforms: frame.uniforms.clone(),
 		});
 	}
@@ -60,7 +60,7 @@ impl RenderContext {
 		uniforms.mvp = UMatrix4(view_projection * Matrix4::from_translation(translation));
 
 		self.q.push(RenderCommand::DrawPlayer {
-			frame_counter: self.state.frame_counter.get(),
+			frame_counter: frame.frame_counter,
 			uniforms: uniforms,
 		});
 	}
@@ -78,10 +78,10 @@ impl Context for RenderContext {
 
 		self.draw_player(&mut frame);
 
-		self.swap_buffers();
+		self.swap_buffers(&frame);
 	}
 
 	fn is_ready(&self) -> bool { self.state.is_ready() }
-	fn pre_tick(&self)         { self.state.frame_counter.increment(); }
+	fn pre_tick(&self)         { self.state.increment(); }
 	fn post_tick(&self)        { self.state.end_tick(); }
 }

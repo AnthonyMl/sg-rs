@@ -27,9 +27,7 @@ impl PhysicsContext {
 	}
 
 	pub fn get_frame(&self) -> Arc<PhysicsFrame> {
-		let t_n1 = self.state.frame.read().unwrap();
-
-		(*t_n1).clone()
+		self.state.frame()
 	}
 }
 
@@ -54,10 +52,10 @@ impl Context for PhysicsContext {
 
 		let new_frame = Arc::new({
 			let player_position = { // The locks sort of show in what way the state dependencies are separated
-				let last_frame = self.state.frame.read().unwrap().clone();
+				let last_frame = self.state.frame();
 				last_frame.player_position + acceleration
 			};
-			let camera = self.state.frame.read().unwrap().camera.clone();
+			let camera = self.state.frame().camera.clone();
 
 			PhysicsFrame {
 				camera: camera,
@@ -65,13 +63,10 @@ impl Context for PhysicsContext {
 			}
 		});
 
-		{
-			let mut self_frame_ref = self.state.frame.write().unwrap();
-			*self_frame_ref = new_frame;
-		}
+		self.state.set_frame(new_frame);
 	}
 
 	fn is_ready(&self) -> bool { self.state.is_ready() }
-	fn pre_tick(&self)         { self.state.frame_counter.increment(); }
+	fn pre_tick(&self)         { self.state.increment(); }
 	fn post_tick(&self)        { self.state.end_tick(); }
 }

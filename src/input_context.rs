@@ -80,7 +80,7 @@ impl Context for InputContext {
 	}
 
 	fn tick(&self, _contexts: Arc<ContextType>) {
-		let last_frame = self.state.frame.read().unwrap().clone();
+		let last_frame = self.state.frame();
 		let mut keyboard_state = last_frame.keyboard_state;
 
 		loop {
@@ -123,6 +123,6 @@ impl Context for InputContext {
 	}
 
 	fn is_ready(&self) -> bool { self.state.is_ready() }
-	fn pre_tick(&self)         { self.state.frame_counter.increment(); }
+	fn pre_tick(&self)         { self.state.increment(); }
 	fn post_tick(&self)        { self.state.end_tick(); }
 }
