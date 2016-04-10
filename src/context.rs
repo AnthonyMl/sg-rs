@@ -55,9 +55,15 @@ unsafe impl Sync for ContextType_ {}
 
 pub trait Context {
 	fn frequency(&self) -> u64;
-	fn tick(&self, Arc<ContextType>); // TODO try to remove Arc dependency
-
 	fn state(&self) -> &ContextStateProxy;
+
+	// TODO try to remove Arc dependency
+	fn do_tick(&self, contexts: Arc<ContextType>) {
+		self.state().pre_tick();
+		self.tick(contexts);
+		self.state().post_tick();
+	}
+	fn tick(&self, Arc<ContextType>); // TODO: make this private
 }
 
 // TODO: try to remove Arc dependency

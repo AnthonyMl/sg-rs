@@ -76,9 +76,7 @@ fn game_loop(contexts: Arc<ContextType + Send + Sync>, pool: Arc<Box<ThreadPool>
 				let local_context  = context.clone();
 				let local_contexts = contexts.clone();
 				pool.post(Box::new(move || {
-					local_context.state().pre_tick();
-					local_context.tick(local_contexts);
-					local_context.state().post_tick();
+					local_context.do_tick(local_contexts);
 				}));
 			}
 		}
