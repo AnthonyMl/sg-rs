@@ -9,12 +9,8 @@ use input_event::{InputEvent};
 use input_frame::{InputFrame};
 use input_map::{InputMap};
 use action_state::{ActionState};
-use constants::{NANOSECONDS_PER_SECOND};
-use keyboard_state::{KeyboardState};
 use context_state::{ContextState, ContextStateProxy};
 
-
-const FREQUENCY: u64 = 120;
 
 pub struct InputContext {
 	state: ContextState<InputFrame>,
@@ -32,16 +28,7 @@ impl InputContext {
 		InputContext {
 			state: ContextState::new(InputFrame {
 				frame_counter: frame_number,
-				action_state: ActionState {
-					movement_direction: Vector2::new(0f64, 0f64),
-					view_direction:     Vector2::new(0f64, 0f64),
-				},
-				keyboard_state: KeyboardState {
-					left:     false,
-					right:    false,
-					forward:  false,
-					backward: false,
-				},
+				..Default::default()
 			}),
 			input_q: MsQueue::new(),
 			output_q: MsQueue::new(),
@@ -75,9 +62,7 @@ impl InputContext {
 }
 
 impl Context for InputContext {
-	fn rate(&self) -> u64 {
-		NANOSECONDS_PER_SECOND / FREQUENCY
-	}
+	fn frequency(&self) -> u64 { 120 }
 
 	fn tick(&self, _contexts: Arc<ContextType>) {
 		let last_frame = self.state.frame();
@@ -119,6 +104,7 @@ impl Context for InputContext {
 			keyboard_state: keyboard_state,
 		};
 
+		self.state.set_frame(Arc::new(frame.clone()));
 		self.output_q.push(frame);
 	}
 

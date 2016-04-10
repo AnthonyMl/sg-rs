@@ -23,7 +23,6 @@ mod input_event;
 mod input_frame;
 mod input_map;
 mod action_state;
-mod constants;
 mod keyboard_state;
 mod context_state;
 

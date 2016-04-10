@@ -1,7 +1,7 @@
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct KeyboardState {
-	pub left:     bool,
-	pub right:    bool,
 	pub forward:  bool,
 	pub backward: bool,
+	pub right:    bool,
+	pub left:     bool,
 }

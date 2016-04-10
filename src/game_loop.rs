@@ -65,7 +65,8 @@ fn game_loop(contexts: Arc<ContextType + Send + Sync>, pool: Arc<Box<ThreadPool>
 		let time = time::precise_time_ns();
 
 		'next_context: for (context, last_time) in contexts.contexts().into_iter().zip(last_times.iter_mut()) {
-			let rate = context.rate();
+			const NANOSECONDS_PERS_SECOND: u64 = 1000000000;
+			let rate = NANOSECONDS_PERS_SECOND / context.frequency();
 
 			while time - *last_time > rate {
 				if !context.state().is_ready() { continue 'next_context}

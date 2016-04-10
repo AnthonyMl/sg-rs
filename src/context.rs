@@ -54,7 +54,7 @@ unsafe impl Send for ContextType_ {}
 unsafe impl Sync for ContextType_ {}
 
 pub trait Context {
-	fn rate(&self) -> u64;
+	fn frequency(&self) -> u64;
 	fn tick(&self, Arc<ContextType>); // TODO try to remove Arc dependency
 
 	fn state(&self) -> &ContextStateProxy;

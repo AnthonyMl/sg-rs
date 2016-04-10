@@ -7,11 +7,8 @@ use render::render_command::{RenderCommand};
 use render::render_frame::{RenderFrame};
 use context::{Context, ContextType};
 use context_state::{ContextState, ContextStateProxy};
-use constants::{NANOSECONDS_PER_SECOND};
 use uniform_wrappers::{UMatrix4};
 
-
-const FREQUENCY: u64 = 60;
 
 type RenderState = ContextState<()>;
 
@@ -69,9 +66,7 @@ impl RenderContext {
 }
 
 impl Context for RenderContext {
-	fn rate(&self) -> u64 {
-		NANOSECONDS_PER_SECOND / FREQUENCY
-	}
+	fn frequency(&self) -> u64 { 60 }
 
 	fn tick(&self, contexts: Arc<ContextType>) {
 		let mut frame = self.clear_screen(contexts);
