@@ -10,21 +10,14 @@ extern crate tobj;
 mod context;
 mod render;
 mod physics;
-mod input_context;
+mod input;
 mod thread_pool;
-mod vertex3;
 mod camera;
-mod uniform_wrappers;
 mod game_loop;
 mod frame_counter;
 mod model;
 mod scene;
-mod input_event;
-mod input_frame;
-mod input_map;
 mod action_state;
-mod keyboard_state;
-mod context_state;
 
 
 fn main() {

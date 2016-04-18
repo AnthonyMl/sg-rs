@@ -1,7 +1,7 @@
 use std::sync::{Arc};
 
 use physics::{PhysicsFrame};
-use uniform_wrappers::{UMatrix4};
+use render::uniform_wrappers::{UMatrix4};
 use render::render_uniforms::{RenderUniforms};
 
 

@@ -4,12 +4,11 @@ use crossbeam::sync::{MsQueue};
 use cgmath::{Vector2};
 
 use frame_counter::{FrameCounter};
-use context::{Context, ContextType};
-use input_event::{InputEvent};
-use input_frame::{InputFrame};
-use input_map::{InputMap};
+use context::{Context, ContextType, ContextState, ContextStateProxy};
+use input::input_event::{InputEvent};
+use input::input_frame::{InputFrame};
+use input::input_map::{InputMap};
 use action_state::{ActionState};
-use context_state::{ContextState, ContextStateProxy};
 
 
 pub struct InputContext {

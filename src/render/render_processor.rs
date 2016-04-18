@@ -12,7 +12,7 @@ use glium::draw_parameters::{DepthTest};
 use model::{Model};
 use render::render_command::{RenderCommand};
 use scene::{Scene};
-use input_event::{InputEvent};
+use input::{InputEvent};
 
 
 // TODO: We can remove clear calls if we clear in the swapbuffers (and replace our old frame objec with a new one)

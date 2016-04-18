@@ -1,5 +1,5 @@
 use action_state::{ActionState};
-use keyboard_state::{KeyboardState};
+use input::keyboard_state::{KeyboardState};
 
 
 #[derive(Clone, Default)]

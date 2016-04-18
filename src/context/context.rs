@@ -5,9 +5,9 @@ use glium::glutin::{WindowBuilder};
 use glium::{DisplayBuild};
 
 use render::{RenderContext, RenderProcessor, RenderCommand};
-use input_context::{InputContext};
+use input::{InputContext};
 use physics::{PhysicsContext};
-use context_state::{ContextStateProxy};
+use context::context_state::{ContextStateProxy};
 
 
 // TODO: maybe rename ContextType->Context and Context->IsContext or something like that?

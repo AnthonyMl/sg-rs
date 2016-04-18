@@ -6,7 +6,7 @@ use glium::backend::glutin_backend::{GlutinFacade};
 use tobj;
 use cgmath::{Point3, Vector3, EuclideanVector};
 
-use vertex3::{Vertex3};
+use render::{Vertex3};
 
 
 pub struct Model {

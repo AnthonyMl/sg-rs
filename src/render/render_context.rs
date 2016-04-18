@@ -5,9 +5,8 @@ use cgmath::{Vector3, Matrix4};
 
 use render::render_command::{RenderCommand};
 use render::render_frame::{RenderFrame};
-use context::{Context, ContextType};
-use context_state::{ContextState, ContextStateProxy};
-use uniform_wrappers::{UMatrix4};
+use render::uniform_wrappers::{UMatrix4};
+use context::{Context, ContextType, ContextState, ContextStateProxy};
 
 
 type RenderState = ContextState<()>;

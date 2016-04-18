@@ -3,10 +3,9 @@ use std::default::{Default};
 
 use cgmath::{Vector3, Point3};
 
-use context::{Context, ContextType};
+use context::{Context, ContextType, ContextState, ContextStateProxy};
 use camera::{Camera};
 use physics::{PhysicsFrame};
-use context_state::{ContextState, ContextStateProxy};
 
 
 pub struct PhysicsContext {

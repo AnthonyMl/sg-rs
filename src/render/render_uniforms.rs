@@ -1,4 +1,4 @@
-use uniform_wrappers::{UMatrix4};
+use render::uniform_wrappers::{UMatrix4};
 
 
 #[derive(Clone)]

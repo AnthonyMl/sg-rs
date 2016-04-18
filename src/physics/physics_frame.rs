@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 use cgmath::{Point3};
 
 use camera::{Camera};
-use input_frame::{InputFrame};
+use input::{InputFrame};
 
 
 pub struct PhysicsFrame {
