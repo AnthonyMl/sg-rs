@@ -53,7 +53,7 @@ pub fn init() {
 //	pool.wait(); // TODO: figure out how to sync this so that we can grab ownership of the pool safely
 }
 
-fn game_loop(contexts: Arc<ContextType + Send + Sync>, pool: Arc<Box<ThreadPool>>) -> ! {
+fn game_loop(contexts: Arc<ContextType>, pool: Arc<Box<ThreadPool>>) -> ! {
 	let time = time::precise_time_ns();
 
 	// TODO: can this be refactored into one line

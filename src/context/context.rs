@@ -12,46 +12,34 @@ use context::context_state::{ContextStateProxy};
 
 // TODO: maybe rename ContextType->Context and Context->IsContext or something like that?
 //
-//type ContextSubType = Context + Send + Sync + 'static;
-//pub type ContextType = Arc<ContextType_ + Send + Sync + 'static>;
-
-pub trait ContextType {
-	fn context_input(&self)   -> Arc<InputContext>;
-	fn context_physics(&self) -> Arc<PhysicsContext>;
-	fn context_render(&self)  -> Arc<RenderContext>;
-	fn contexts(&self)        -> &[Arc<Context + Send + Sync>];
-	fn len(&self)             -> usize;
-}
-
-struct ContextType_ {
+pub struct ContextType {
 	context_input:   Arc<InputContext>,
 	context_physics: Arc<PhysicsContext>,
-	context_render:  Arc<RenderContext>,
+	_context_render:  Arc<RenderContext>,
 	contexts: [Arc<Context + Send + Sync>; 3],
 }
-impl ContextType_ {
-	fn new(q: Arc<MsQueue<RenderCommand>>,width: u32, height: u32) -> ContextType_ {
+impl ContextType {
+	fn new(q: Arc<MsQueue<RenderCommand>>,width: u32, height: u32) -> ContextType {
 		let ai = Arc::new(InputContext::new());
 		let ap = Arc::new(PhysicsContext::new(width, height));
 		let ar = Arc::new(RenderContext::new(q));
 
-		ContextType_ {
+		ContextType {
 			context_input:   ai.clone(),
 			context_physics: ap.clone(),
-			context_render:  ar.clone(),
+			_context_render:  ar.clone(),
 			contexts: [ai.clone(), ap.clone(), ar.clone()]
 		}
 	}
+
+	pub fn context_input  (&self) -> Arc<InputContext>   { self.context_input  .clone() }
+	pub fn context_physics(&self) -> Arc<PhysicsContext> { self.context_physics.clone() }
+	pub fn _context_render (&self) -> Arc<RenderContext>  { self._context_render .clone() }
+	pub fn contexts       (&self) -> &[Arc<Context + Send + Sync>] { self.contexts.as_ref() }
+	pub fn len            (&self) -> usize { self.contexts.len() }
 }
-impl ContextType for ContextType_ {
-	fn context_input  (&self) -> Arc<InputContext>   { self.context_input  .clone() }
-	fn context_physics(&self) -> Arc<PhysicsContext> { self.context_physics.clone() }
-	fn context_render (&self) -> Arc<RenderContext>  { self.context_render .clone() }
-	fn contexts       (&self) -> &[Arc<Context + Send + Sync>] { self.contexts.as_ref() }
-	fn len            (&self) -> usize { self.contexts.len() }
-}
-unsafe impl Send for ContextType_ {}
-unsafe impl Sync for ContextType_ {}
+unsafe impl Send for ContextType {}
+unsafe impl Sync for ContextType {}
 
 pub trait Context {
 	fn frequency(&self) -> u64;
@@ -68,7 +56,7 @@ pub trait Context {
 
 // TODO: try to remove Arc dependency
 //
-pub fn create(width: u32, height: u32) -> (Arc<ContextType + Send + Sync>, RenderProcessor) {
+pub fn create(width: u32, height: u32) -> (Arc<ContextType>, RenderProcessor) {
 	let glium_context = WindowBuilder::new()
 		.with_dimensions(width, height)
 		.with_title(format!("SG"))
@@ -79,7 +67,7 @@ pub fn create(width: u32, height: u32) -> (Arc<ContextType + Send + Sync>, Rende
 
 	(
 		Arc::new(
-			ContextType_::new(
+			ContextType::new(
 				q.clone(),
 				width,
 				height
