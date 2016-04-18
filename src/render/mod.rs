@@ -1,6 +1,6 @@
-pub use self::render_context::*;
-pub use self::render_processor::*;
-pub use self::render_command::*;
+pub use self::render_context::{RenderContext};
+pub use self::render_processor::{RenderProcessor};
+pub use self::render_command::{RenderCommand};
 pub use self::vertex3::{Vertex3};
 
 mod render_context;
