@@ -144,12 +144,7 @@ impl RenderProcessor {
 			}}
 		}
 
-		loop {
-			let job = match self.q.try_pop() {
-				Some(j) => j,
-				None    => break,
-			};
-
+		while let Some(job) = self.q.try_pop() {
 			match job {
 				RenderCommand::ClearScreen{ render_frame } => {
 					let mut frame = self.context.draw();

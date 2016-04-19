@@ -38,11 +38,8 @@ pub fn init() {
 
 	// TODO: may need to be refactored to handle system events more frequently/(lower max potential latency)
 	//
-	loop {
-		match rp.handle_system_events() {
-			Some(es) => context.context_input().post_input_events(es),
-			None     => break,
-		};
+	while let Some(events) = rp.handle_system_events() {
+		context.context_input().post_input_events(events);
 
 		rp.handle_render_commands();
 

@@ -6,31 +6,39 @@ use cgmath::{Vector3, Matrix4};
 use render::render_command::{RenderCommand};
 use render::render_frame::{RenderFrame};
 use render::uniform_wrappers::{UMatrix4};
-use context::{Context, ContextType, ContextState, ContextStateProxy};
+use render::render_uniforms::{RenderUniforms};
+use context::{Context, ContextType, ContextState};
+use frame::{Frame};
 
-
-type RenderState = ContextState<()>;
 
 pub struct RenderContext {
 	q: Arc<MsQueue<RenderCommand>>,
-	state: RenderState,
+	state: ContextState,
 }
 
 impl RenderContext {
-	pub fn new(q: Arc<MsQueue<RenderCommand>>) -> RenderContext {
+	pub fn new(q: Arc<MsQueue<RenderCommand>>, physics_frame: Frame) -> RenderContext {
+		let physics_frame = (match physics_frame {
+			Frame::Physics(frame) => Some(frame),
+			_ => None,
+		}).unwrap();
+
 		RenderContext {
 			q: q,
-			state: ContextState::new(()),
+			state: ContextState::new(
+				Frame::Render(Arc::new(RenderFrame {
+					frame_counter: 0,
+					physics_frame: physics_frame.clone(),
+					uniforms: RenderUniforms {
+						mvp: UMatrix4(physics_frame.camera.mtx_full),
+					},
+				}))
+			),
 		}
 	}
 
-	fn clear_screen(&self, contexts: Arc<ContextType>) -> Arc<RenderFrame> {
-		let render_frame = Arc::new(RenderFrame::new(
-			self.state.frame_counter(),
-			contexts.context_physics().get_frame()
-		));
-		self.q.push(RenderCommand::ClearScreen{ render_frame: render_frame.clone() });
-		render_frame
+	fn clear_screen(&self, render_frame: Arc<RenderFrame>) {
+		self.q.push(RenderCommand::ClearScreen{ render_frame: render_frame });
 	}
 
 	fn swap_buffers(&self, frame: &Arc<RenderFrame>) {
@@ -64,18 +72,33 @@ impl RenderContext {
 	}
 }
 
+unsafe impl Send for RenderContext {}
+unsafe impl Sync for RenderContext {}
+
 impl Context for RenderContext {
 	fn frequency(&self) -> u64 { 60 }
 
-	fn tick(&self, contexts: Arc<ContextType>) {
-		let mut frame = self.clear_screen(contexts);
+	fn tick(&self, contexts: Arc<ContextType>, _: Frame) -> Frame {
+		let physics_frame = contexts.context_physics().get_frame();
+
+		let mut frame = Arc::new(RenderFrame {
+			frame_counter: self.state().frame_counter(),
+			physics_frame: physics_frame.clone(),
+			uniforms: RenderUniforms {
+				mvp: UMatrix4(physics_frame.camera.mtx_full),
+			},
+		});
+
+		self.clear_screen(frame.clone());
 
 		self.draw_scene(&mut frame);
 
 		self.draw_player(&mut frame);
 
 		self.swap_buffers(&frame);
+
+		Frame::Render(frame)
 	}
 
-	fn state(&self) -> &ContextStateProxy { &self.state }
+	fn state(&self) -> &ContextState { &self.state }
 }

@@ -18,6 +18,7 @@ mod frame_counter;
 mod model;
 mod scene;
 mod action_state;
+mod frame;
 
 
 fn main() {
