@@ -15,8 +15,6 @@ use frame::{Frame};
 // TODO: maybe rename ContextType->Context and Context->IsContext or something like that?
 //
 pub struct ContextType {
-	// TODO: these can be Context<InputFrame> etc. Is that useful?
-	//
 	context_input:   Arc<InputContext>,
 	context_physics: Arc<PhysicsContext>,
 	context_render:  Arc<RenderContext>,
@@ -44,8 +42,7 @@ impl ContextType {
 
 	pub fn context_input  (&self) -> Arc<InputContext>   { self.context_input  .clone() }
 	pub fn context_physics(&self) -> Arc<PhysicsContext> { self.context_physics.clone() }
-	pub fn _context_render(&self) -> Arc<RenderContext>  { self.context_render.clone() }
-	pub fn len            (&self) -> usize { self.contexts().len() }
+	pub fn _context_render(&self) -> Arc<RenderContext>  { self.context_render .clone() }
 }
 unsafe impl Send for ContextType {}
 unsafe impl Sync for ContextType {}
@@ -57,10 +54,10 @@ enum ContextKind {
 }
 
 fn to_context(context: &ContextKind) -> Arc<Context> {
-	match context {
-		&ContextKind::Input(ref ic)   => ic.clone(),
-		&ContextKind::Physics(ref pc) => pc.clone(),
-		&ContextKind::Render(ref rc)  => rc.clone(),
+	match *context {
+		ContextKind::Input(  ref ic) => ic.clone(),
+		ContextKind::Physics(ref pc) => pc.clone(),
+		ContextKind::Render( ref rc) => rc.clone(),
 	}
 }
 

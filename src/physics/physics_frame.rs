@@ -23,9 +23,6 @@ impl PhysicsFrame {
 
 		let mut acceleration = Vector3::new(0f64, 0f64, 0f64);
 
-		// last InputFrame wins
-		// TODO: generalize and factor out all integration
-		//
 		let input_frame_ref = {
 			if let Some(frame) = contexts.context_input().get_input_frames().pop() {
 				Arc::new(RwLock::new(frame))
@@ -38,6 +35,8 @@ impl PhysicsFrame {
 		//
 		let input_direction = { input_frame_ref.read().unwrap().action_state.movement_direction };
 
+		// TODO: generalize and factor out all integration
+		//
 		let direction = Vector3::new(input_direction.y, 0f64, input_direction.x);
 		const FUDGE: f64 = 0.1f64;
 		acceleration = acceleration + (direction * FUDGE);

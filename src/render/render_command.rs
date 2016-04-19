@@ -9,7 +9,7 @@ pub enum RenderCommand {
 	SwapBuffers { frame_counter: u64 },
 	DrawScene {
 		frame_counter: u64,
-		uniforms: RenderUniforms, // TODO: switch to using references or Box for these
+		uniforms: RenderUniforms,
 	},
 	DrawPlayer {
 		frame_counter: u64,

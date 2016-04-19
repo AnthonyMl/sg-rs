@@ -42,8 +42,6 @@ impl InputContext {
 		for event in input_events { self.input_q.push(event) }
 	}
 
-	// TODO: change this to something more generic than Vec
-	//
 	pub fn get_input_frames(&self) -> Vec<InputFrame> {
 		let mut out = Vec::new();
 		let _ = self.drain_lock.lock().unwrap();

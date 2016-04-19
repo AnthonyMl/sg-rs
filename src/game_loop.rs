@@ -51,12 +51,7 @@ pub fn init() {
 }
 
 fn game_loop(contexts: Arc<ContextType>, pool: Arc<Box<ThreadPool>>) -> ! {
-	let time = time::precise_time_ns();
-
-	// TODO: can this be refactored into one line
-	//
-	let mut last_times: Vec<u64> = Vec::with_capacity(contexts.len());
-	for _ in 0..contexts.len() { last_times.push(time) }
+	let mut last_times: Vec<u64> = vec![time::precise_time_ns(); contexts.contexts().len()];
 
 	loop {
 		let time = time::precise_time_ns();
