@@ -15,8 +15,8 @@ pub struct PhysicsFrame {
 }
 
 impl PhysicsFrame {
-	pub fn new(contexts: Arc<ContextType>, frame: Arc<PhysicsFrame>) -> PhysicsFrame {
-		let mut input_frames = contexts.context_input().get_input_frames();
+	pub fn new(context: Arc<ContextType>, frame: Arc<PhysicsFrame>) -> PhysicsFrame {
+		let mut input_frames = context.input().get_input_frames();
 
 		let view_delta: Vector2<f64> = input_frames.iter().fold(
 			Vector2::new(0f64, 0f64),
@@ -52,7 +52,7 @@ impl PhysicsFrame {
 
 		// TODO: this can be kicked up in a task at the start (if we use last frame's position)
 		//
-		let camera = Camera::new(player_position, view_direction, contexts.context_render().window_size());
+		let camera = Camera::new(player_position, view_direction, context.render().window_size());
 
 		PhysicsFrame {
 			camera: camera,

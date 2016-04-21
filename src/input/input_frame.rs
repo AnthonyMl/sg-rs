@@ -16,10 +16,10 @@ pub struct InputFrame {
 }
 
 impl InputFrame {
-	pub fn new(contexts: Arc<ContextType>, frame: Arc<InputFrame>) -> InputFrame {
+	pub fn new(context: Arc<ContextType>, frame: Arc<InputFrame>) -> InputFrame {
 		let mut keyboard_state = frame.keyboard_state;
 		let mut mouse_movement = Vector2::new(0f64, 0f64);
-		let ic = contexts.context_input();
+		let ic = context.input();
 
 		while let Some(event) = ic.input_q.try_pop() {
 			match event {

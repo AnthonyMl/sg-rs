@@ -14,11 +14,6 @@ use frame::{Frame};
 // TODO: try to remove Arc dependency
 // TODO: maybe rename ContextType->Context and Context->IsContext or something like that?
 //
-pub struct ContextType {
-	context_input:   Arc<InputContext>,
-	context_physics: Arc<PhysicsContext>,
-	context_render:  Arc<RenderContext>,
-}
 
 impl ContextType {
 	fn new(q: Arc<MsQueue<RenderCommand>>, window_size: (u32, u32)) -> ContextType {
@@ -27,39 +22,14 @@ impl ContextType {
 		let ar = Arc::new(RenderContext::new(q, window_size));
 
 		ContextType {
-			context_input:   ai.clone(),
-			context_physics: ap.clone(),
-			context_render:  ar.clone(),
+			input:   ai.clone(),
+			physics: ap.clone(),
+			render:  ar.clone(),
 		}
 	}
-
-	pub fn contexts(&self) -> Box<[Arc<Context>]> {
-		[ ContextKind::Input(  self.context_input  .clone())
-		, ContextKind::Physics(self.context_physics.clone())
-		, ContextKind::Render( self.context_render .clone())
-		].into_iter().map(to_context).collect::<Vec<Arc<Context>>>().into_boxed_slice()
-	}
-
-	pub fn context_input  (&self) -> Arc<InputContext>   { self.context_input  .clone() }
-	pub fn context_physics(&self) -> Arc<PhysicsContext> { self.context_physics.clone() }
-	pub fn context_render (&self) -> Arc<RenderContext>  { self.context_render .clone() }
 }
 unsafe impl Send for ContextType {}
 unsafe impl Sync for ContextType {}
-
-enum ContextKind {
-	Input(  Arc<InputContext>),
-	Physics(Arc<PhysicsContext>),
-	Render( Arc<RenderContext>),
-}
-
-fn to_context(context: &ContextKind) -> Arc<Context> {
-	match *context {
-		ContextKind::Input(  ref ic) => ic.clone(),
-		ContextKind::Physics(ref pc) => pc.clone(),
-		ContextKind::Render( ref rc) => rc.clone(),
-	}
-}
 
 pub trait Context: Send + Sync {
 	fn frequency(&self) -> u64;     // TODO: can this be static?
@@ -108,6 +78,43 @@ macro_rules! register_context {
 		}
 	}
 }
-register_context!(InputContext,   InputFrame,   Input,   120);
-register_context!(PhysicsContext, PhysicsFrame, Physics, 120);
-register_context!(RenderContext,  RenderFrame,  Render,   60);
+
+macro_rules! mega_context {
+	( $({ $context_type:ty, $frame_type:ident, $erased_frame_type:ident, $name:ident, $frequency:expr }),* ) => {
+		enum ContextKind {
+			$( $erased_frame_type(Arc<$context_type>), )*
+		}
+
+		fn to_context(context: &ContextKind) -> Arc<Context> {
+			match *context {
+				$( ContextKind::$erased_frame_type(ref $name) => $name.clone(), )*
+			}
+		}
+
+		pub struct ContextType {
+			$( $name: Arc<$context_type>, )*
+		}
+
+		impl ContextType {
+			pub fn contexts(&self) -> Box<[Arc<Context>]> {
+				[$(
+					ContextKind::$erased_frame_type(self.$name.clone()),
+				)*].into_iter().map(to_context).collect::<Vec<Arc<Context>>>().into_boxed_slice()
+			}
+
+			$(
+				pub fn $name(&self) -> Arc<$context_type> { self.$name.clone() }
+			)*
+		}
+
+		$(
+			register_context!($context_type, $frame_type, $erased_frame_type, $frequency);
+		)*
+	};
+}
+
+mega_context!(
+	{ InputContext,   InputFrame,   Input,   input,   120 },
+	{ PhysicsContext, PhysicsFrame, Physics, physics, 120 },
+	{ RenderContext,  RenderFrame,  Render,  render,   60 }
+);
