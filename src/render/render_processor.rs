@@ -163,10 +163,10 @@ impl RenderProcessor {
 
 		while let Some(job) = self.q.try_pop() {
 			match job {
-				RenderCommand::ClearScreen{ render_frame } => {
+				RenderCommand::ClearScreen{ frame_counter } => {
 					let mut frame = self.context.draw();
 					frame.clear_color_and_depth((0.125f32, 0.25f32, 0.5f32, 1.0f32), 1.0);
-					self.frames.insert(render_frame.frame_counter, frame);
+					self.frames.insert(frame_counter, frame);
 				},
 				RenderCommand::SwapBuffers{ frame_counter } => {
 					let mut frame = self.frames.remove(&frame_counter).unwrap();

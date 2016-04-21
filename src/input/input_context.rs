@@ -48,6 +48,13 @@ impl InputContext {
 		while let Some(frame) = self.output_q.try_pop() { out.push(frame) }
 		out
 	}
+
+	fn get_frame(&self) -> Arc<InputFrame> {
+		(match self.state().frame() {
+			Frame::Input(f) => Some(f),
+			_ => None,
+		}).unwrap()
+	}
 }
 
 unsafe impl Send for InputContext {}
@@ -56,7 +63,9 @@ unsafe impl Sync for InputContext {}
 impl Context for InputContext {
 	fn frequency(&self) -> u64 { 120 }
 
-	fn tick(&self, contexts: Arc<ContextType>, frame: Frame) -> Frame {
+	fn tick(&self, contexts: Arc<ContextType>) -> Frame {
+		let frame = self.get_frame();
+
 		let new_frame = InputFrame::new(contexts, frame);
 		self.output_q.push(new_frame.clone());
 		Frame::Input(Arc::new(new_frame))

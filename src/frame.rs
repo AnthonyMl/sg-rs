@@ -7,7 +7,7 @@ use input::{InputFrame};
 
 #[derive(Clone)]
 pub enum Frame {
-	Render(Arc<RenderFrame>),
+	Render( Arc<RenderFrame>),
 	Physics(Arc<PhysicsFrame>),
-	Input(Arc<InputFrame>),
+	Input(  Arc<InputFrame>),
 }

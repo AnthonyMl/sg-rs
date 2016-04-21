@@ -4,7 +4,6 @@ use cgmath::{Point3, Vector3, Vector2, EuclideanVector};
 
 use camera::{Camera};
 use input::{InputFrame};
-use frame::{Frame};
 use context::{ContextType};
 
 
@@ -16,12 +15,7 @@ pub struct PhysicsFrame {
 }
 
 impl PhysicsFrame {
-	pub fn new(contexts: Arc<ContextType>, frame: Frame) -> PhysicsFrame {
-		let frame = (match frame {
-			Frame::Physics(physics_frame) => Some(physics_frame),
-			_ => None,
-		}).unwrap();
-
+	pub fn new(contexts: Arc<ContextType>, frame: Arc<PhysicsFrame>) -> PhysicsFrame {
 		let mut input_frames = contexts.context_input().get_input_frames();
 
 		let view_delta: Vector2<f64> = input_frames.iter().fold(

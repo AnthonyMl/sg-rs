@@ -1,11 +1,9 @@
 use std::sync::{Arc};
 
 use crossbeam::sync::{MsQueue};
-use cgmath::{Matrix4, Point};
 
 use render::render_command::{RenderCommand};
 use render::render_frame::{RenderFrame};
-use render::uniform_wrappers::{UMatrix4};
 use render::render_uniforms::{RenderUniforms};
 use context::{Context, ContextType, ContextState};
 use frame::{Frame};
@@ -18,57 +16,49 @@ pub struct RenderContext {
 }
 
 impl RenderContext {
-	pub fn new(q: Arc<MsQueue<RenderCommand>>, physics_frame: Frame, window_size: (u32, u32)) -> RenderContext {
-		let physics_frame = (match physics_frame {
-			Frame::Physics(frame) => Some(frame),
-			_ => None,
-		}).unwrap();
-
+	pub fn new(q: Arc<MsQueue<RenderCommand>>, window_size: (u32, u32)) -> RenderContext {
 		RenderContext {
 			q: q,
-			state: ContextState::new(
-				Frame::Render(Arc::new(RenderFrame {
-					frame_counter: 0,
-					physics_frame: physics_frame.clone(),
-					uniforms: RenderUniforms {
-						mvp: UMatrix4(physics_frame.camera.mtx_full),
-					},
-				}))
-			),
+			state: ContextState::new(Frame::Render(Arc::new(RenderFrame{ }))),
 			window_size: window_size,
 		}
+	}
+
+	pub fn frame_counter(&self) -> u64 {
+		self.state.frame_counter()
 	}
 
 	pub fn window_size(&self) -> (u32, u32) {
 		self.window_size
 	}
 
-	fn clear_screen(&self, render_frame: Arc<RenderFrame>) {
-		self.q.push(RenderCommand::ClearScreen{ render_frame: render_frame });
+	pub fn get_frame(&self) -> Arc<RenderFrame> {
+		(match self.state().frame() {
+			Frame::Render(f) => Some(f),
+			_ => None,
+		}).unwrap()
 	}
 
-	fn swap_buffers(&self, frame: &Arc<RenderFrame>) {
-		self.q.push(RenderCommand::SwapBuffers{ frame_counter: frame.frame_counter });
+	// --- Draw Commands --- (candidates for inlining)
+	//
+	pub fn clear_screen(&self, frame_counter: u64) {
+		self.q.push(RenderCommand::ClearScreen { frame_counter: frame_counter });
 	}
 
-	fn draw_scene(&self, frame: &mut Arc<RenderFrame>) {
-		self.q.push(RenderCommand::DrawScene{
-			frame_counter: frame.frame_counter,
-			uniforms: frame.uniforms.clone(),
+	pub fn swap_buffers(&self, frame_counter: u64) {
+		self.q.push(RenderCommand::SwapBuffers { frame_counter: frame_counter });
+	}
+
+	pub fn draw_scene(&self, frame_counter: u64, uniforms: RenderUniforms) {
+		self.q.push(RenderCommand::DrawScene {
+			frame_counter: frame_counter,
+			uniforms: uniforms,
 		});
 	}
 
-	fn draw_player(&self, frame: &mut Arc<RenderFrame>) {
-		let translation = frame.physics_frame.player_position.to_vec();
-
-		// TODO: change internal mvp to doubles and only convert at the end/batch transforms
-		//
-		let mut uniforms = frame.uniforms.clone();
-		let UMatrix4(view_projection) = uniforms.mvp;
-		uniforms.mvp = UMatrix4(view_projection * Matrix4::from_translation(translation));
-
+	pub fn draw_player(&self, frame_counter: u64, uniforms: RenderUniforms) {
 		self.q.push(RenderCommand::DrawPlayer {
-			frame_counter: frame.frame_counter,
+			frame_counter: frame_counter,
 			uniforms: uniforms,
 		});
 	}
@@ -80,26 +70,10 @@ unsafe impl Sync for RenderContext {}
 impl Context for RenderContext {
 	fn frequency(&self) -> u64 { 60 }
 
-	fn tick(&self, contexts: Arc<ContextType>, _: Frame) -> Frame {
-		let physics_frame = contexts.context_physics().get_frame();
+	fn tick(&self, contexts: Arc<ContextType>) -> Frame {
+		let last_frame = self.get_frame();
 
-		let mut frame = Arc::new(RenderFrame {
-			frame_counter: self.state().frame_counter(),
-			physics_frame: physics_frame.clone(),
-			uniforms: RenderUniforms {
-				mvp: UMatrix4(physics_frame.camera.mtx_full),
-			},
-		});
-
-		self.clear_screen(frame.clone());
-
-		self.draw_scene(&mut frame);
-
-		self.draw_player(&mut frame);
-
-		self.swap_buffers(&frame);
-
-		Frame::Render(frame)
+		Frame::Render(Arc::new(RenderFrame::new(contexts, last_frame)))
 	}
 
 	fn state(&self) -> &ContextState { &self.state }

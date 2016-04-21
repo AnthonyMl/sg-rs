@@ -24,7 +24,7 @@ impl ContextType {
 	fn new(q: Arc<MsQueue<RenderCommand>>, window_size: (u32, u32)) -> ContextType {
 		let ai = Arc::new(InputContext::new());
 		let ap = Arc::new(PhysicsContext::new(window_size));
-		let ar = Arc::new(RenderContext::new(q, ap.state().frame(), window_size));
+		let ar = Arc::new(RenderContext::new(q, window_size));
 
 		ContextType {
 			context_input:   ai.clone(),
@@ -62,13 +62,13 @@ fn to_context(context: &ContextKind) -> Arc<Context> {
 }
 
 pub trait Context: Send + Sync {
-	fn frequency(&self) -> u64;
+	fn frequency(&self) -> u64;     // TODO: can this be static?
 	fn state(&self) -> &ContextState;
-	fn tick(&self, Arc<ContextType>, Frame) -> Frame;
+	fn tick(&self, Arc<ContextType>) -> Frame;
 
 	fn do_tick(&self, contexts: Arc<ContextType>) {
 		self.state().tick_enter();
-		let f = self.tick(contexts, self.state().frame());
+		let f = self.tick(contexts);
 		self.state().tick_exit(f);
 	}
 }
@@ -89,3 +89,26 @@ pub fn create(window_size: (u32, u32)) -> (Arc<ContextType>, RenderProcessor) {
 		RenderProcessor::new(q, glium_context),
 	)
 }
+/*
+// register_context!(PhysicsContext, PhysicsFrame, 120, tick);
+// fn tick(&self, contexts: Arc<ContextType>, Arc<PhysicsFrame>) -> PhysicsFrame { ...
+//
+macro_rules! register_context {
+	($context_type:ty, $frame_type:ty, $erased_frame_type:ty, $frequency:expr, $callback:expr) => {{
+		impl Context for $context_type {
+			fn frequency(&self) -> u64 { $frequency }
+
+			fn tick(&self, contexts: Arc<ContextType>) -> Frame {
+				let last_frame = (match self.state().frame() {
+					$erased_frame_type(f) => Some(f),
+					_ => None,
+				}).unwrap();
+
+				$erased_frame_type(Arc::new($frame_type::new(contexts, last_frame)))
+			}
+
+			fn state(&self) -> &ContextState { &self.state }
+		}
+	}}
+}
+*/

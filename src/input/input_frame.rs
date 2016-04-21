@@ -5,7 +5,6 @@ use cgmath::{Vector2};
 use action_state::{ActionState};
 use input::keyboard_state::{KeyboardState};
 use input::input_event::{InputEvent};
-use frame::{Frame};
 use context::{ContextType};
 
 
@@ -17,12 +16,7 @@ pub struct InputFrame {
 }
 
 impl InputFrame {
-	pub fn new(contexts: Arc<ContextType>, frame: Frame) -> InputFrame {
-		let frame = (match frame {
-			Frame::Input(f) => Some(f),
-			_ => None,
-		}).unwrap();
-
+	pub fn new(contexts: Arc<ContextType>, frame: Arc<InputFrame>) -> InputFrame {
 		let mut keyboard_state = frame.keyboard_state;
 		let mut mouse_movement = Vector2::new(0f64, 0f64);
 		let ic = contexts.context_input();
