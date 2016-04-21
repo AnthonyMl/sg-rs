@@ -24,6 +24,7 @@ impl InputFrame {
 		}).unwrap();
 
 		let mut keyboard_state = frame.keyboard_state;
+		let mut mouse_movement = Vector2::new(0f64, 0f64);
 		let ic = contexts.context_input();
 
 		while let Some(event) = ic.input_q.try_pop() {
@@ -34,6 +35,9 @@ impl InputFrame {
 					if id == ic.input_map.right()    { keyboard_state.right    = pressed }
 					if id == ic.input_map.left()     { keyboard_state.left     = pressed }
 				},
+				InputEvent::MouseMoved{ dx, dy } => {
+					mouse_movement = mouse_movement + Vector2::new(dx, dy);
+				}
 				_ => {}
 			}
 		}
@@ -52,7 +56,7 @@ impl InputFrame {
 			frame_counter: frame.frame_counter + 1,
 			action_state: ActionState {
 				movement_direction: direction,
-				view_direction: Vector2::new(0f64, 0f64),
+				view_direction: mouse_movement,
 			},
 			keyboard_state: keyboard_state,
 		}

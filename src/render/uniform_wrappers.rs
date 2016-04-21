@@ -3,15 +3,15 @@ use glium::uniforms::{AsUniformValue, UniformValue};
 
 
 #[derive(Clone)]
-pub struct UMatrix4(pub Matrix4<f32>);
+pub struct UMatrix4(pub Matrix4<f64>);
 
 impl AsUniformValue for UMatrix4 {
 	fn as_uniform_value(&self) -> UniformValue {
 		UniformValue::Mat4([
-			[self.0.x.x, self.0.x.y, self.0.x.z, self.0.x.w],
-			[self.0.y.x, self.0.y.y, self.0.y.z, self.0.y.w],
-			[self.0.z.x, self.0.z.y, self.0.z.z, self.0.z.w],
-			[self.0.w.x, self.0.w.y, self.0.w.z, self.0.w.w],
+			[self.0.x.x as f32, self.0.x.y as f32, self.0.x.z as f32, self.0.x.w as f32],
+			[self.0.y.x as f32, self.0.y.y as f32, self.0.y.z as f32, self.0.y.w as f32],
+			[self.0.z.x as f32, self.0.z.y as f32, self.0.z.z as f32, self.0.z.w as f32],
+			[self.0.w.x as f32, self.0.w.y as f32, self.0.w.z as f32, self.0.w.w as f32],
 		])
 	}
 }

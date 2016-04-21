@@ -1,7 +1,7 @@
 use std::sync::{Arc};
 
 use crossbeam::sync::{MsQueue};
-use cgmath::{Vector3, Matrix4};
+use cgmath::{Matrix4, Point};
 
 use render::render_command::{RenderCommand};
 use render::render_frame::{RenderFrame};
@@ -14,10 +14,11 @@ use frame::{Frame};
 pub struct RenderContext {
 	q: Arc<MsQueue<RenderCommand>>,
 	state: ContextState,
+	window_size: (u32, u32),
 }
 
 impl RenderContext {
-	pub fn new(q: Arc<MsQueue<RenderCommand>>, physics_frame: Frame) -> RenderContext {
+	pub fn new(q: Arc<MsQueue<RenderCommand>>, physics_frame: Frame, window_size: (u32, u32)) -> RenderContext {
 		let physics_frame = (match physics_frame {
 			Frame::Physics(frame) => Some(frame),
 			_ => None,
@@ -34,7 +35,12 @@ impl RenderContext {
 					},
 				}))
 			),
+			window_size: window_size,
 		}
+	}
+
+	pub fn window_size(&self) -> (u32, u32) {
+		self.window_size
 	}
 
 	fn clear_screen(&self, render_frame: Arc<RenderFrame>) {
@@ -53,11 +59,7 @@ impl RenderContext {
 	}
 
 	fn draw_player(&self, frame: &mut Arc<RenderFrame>) {
-		let input_position = frame.physics_frame.player_position;
-		let translation = Vector3::new(
-			input_position.x as f32,
-			input_position.y as f32,
-			input_position.z as f32);
+		let translation = frame.physics_frame.player_position.to_vec();
 
 		// TODO: change internal mvp to doubles and only convert at the end/batch transforms
 		//

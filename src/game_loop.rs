@@ -22,7 +22,7 @@ pub fn init() {
 	const WIDTH: u32 = 1280;
 	const HEIGHT: u32 = 800;
 
-	let (context, mut rp) = context::create(WIDTH, HEIGHT); // main thread is ui thread
+	let (context, mut rp) = context::create((WIDTH, HEIGHT)); // main thread is ui thread
 
 	const NUM_WORKER_THREADS: usize = 3;
 	let pool = Arc::new(Box::new(ThreadPool::new(NUM_WORKER_THREADS)));

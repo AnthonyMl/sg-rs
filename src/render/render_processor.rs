@@ -97,6 +97,9 @@ impl RenderProcessor {
 	pub fn handle_system_events(&self) -> Option<Vec<InputEvent>> {
 		let mut out = Vec::new();
 
+		let (width, height) = self.context.get_window().unwrap().get_inner_size().unwrap();
+		let (width, height) = (width as i32, height as i32);
+
 		for event in self.context.poll_events() {
 			match event {
 				Event::Closed => {
@@ -113,6 +116,20 @@ impl RenderProcessor {
 						pressed: state == ElementState::Pressed,
 						id: key_code,
 					});
+				},
+				Event::MouseMoved((x, y)) => {
+					let (cx, cy) = (width / 2, height / 2);
+
+					if x == cx && y == cy { continue }
+
+					self.context.get_window().unwrap().set_cursor_position(cx, cy).ok();
+					out.push(InputEvent::MouseMoved {
+						dx: ((x - cx) as f64) / (cx as f64),
+						dy: ((y - cy) as f64) / (cy as f64),
+					});
+				},
+				Event::Resized(_width, _height) => {
+					// TODO: implement and event bus it or something
 				},
 				_ => ()
 			}

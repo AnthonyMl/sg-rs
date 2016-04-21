@@ -1,7 +1,7 @@
 use std::sync::{Arc};
 
 use crossbeam::sync::{MsQueue};
-use glium::glutin::{WindowBuilder};
+use glium::glutin::{WindowBuilder, CursorState};
 use glium::{DisplayBuild};
 
 use render::{RenderContext, RenderProcessor, RenderCommand};
@@ -21,10 +21,10 @@ pub struct ContextType {
 }
 
 impl ContextType {
-	fn new(q: Arc<MsQueue<RenderCommand>>,width: u32, height: u32) -> ContextType {
+	fn new(q: Arc<MsQueue<RenderCommand>>, window_size: (u32, u32)) -> ContextType {
 		let ai = Arc::new(InputContext::new());
-		let ap = Arc::new(PhysicsContext::new(width, height));
-		let ar = Arc::new(RenderContext::new(q, ap.state().frame()));
+		let ap = Arc::new(PhysicsContext::new(window_size));
+		let ar = Arc::new(RenderContext::new(q, ap.state().frame(), window_size));
 
 		ContextType {
 			context_input:   ai.clone(),
@@ -42,7 +42,7 @@ impl ContextType {
 
 	pub fn context_input  (&self) -> Arc<InputContext>   { self.context_input  .clone() }
 	pub fn context_physics(&self) -> Arc<PhysicsContext> { self.context_physics.clone() }
-	pub fn _context_render(&self) -> Arc<RenderContext>  { self.context_render .clone() }
+	pub fn context_render (&self) -> Arc<RenderContext>  { self.context_render .clone() }
 }
 unsafe impl Send for ContextType {}
 unsafe impl Sync for ContextType {}
@@ -73,23 +73,19 @@ pub trait Context: Send + Sync {
 	}
 }
 
-pub fn create(width: u32, height: u32) -> (Arc<ContextType>, RenderProcessor) {
+pub fn create(window_size: (u32, u32)) -> (Arc<ContextType>, RenderProcessor) {
 	let glium_context = WindowBuilder::new()
-		.with_dimensions(width, height)
+		.with_dimensions(window_size.0, window_size.1)
 		.with_title(format!("SG"))
 		.with_depth_buffer(24)
 		.build_glium().unwrap();
 
+	glium_context.get_window().unwrap().set_cursor_state(CursorState::Grab).ok();
+
 	let q = Arc::new(MsQueue::new());
 
 	(
-		Arc::new(
-			ContextType::new(
-				q.clone(),
-				width,
-				height
-			)
-		),
-		RenderProcessor::new(q.clone(), glium_context),
+		Arc::new(ContextType::new(q.clone(), window_size)),
+		RenderProcessor::new(q, glium_context),
 	)
 }

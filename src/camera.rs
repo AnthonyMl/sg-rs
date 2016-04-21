@@ -1,30 +1,31 @@
-use std::f32::consts::{FRAC_PI_3};
+use std::f64::consts::{FRAC_PI_3};
 
-use cgmath::{Matrix4, Point3, Vector3, PerspectiveFov, Rad, EuclideanVector};
+use cgmath::{Matrix4, Point, Point3, Vector3, PerspectiveFov, Rad, EuclideanVector};
 
 
 #[derive(Clone)]
 pub struct Camera {
-	pub mtx_full: Matrix4<f32>,
+	pub mtx_full: Matrix4<f64>,
 }
 
 impl Camera {
-	pub fn new(width: u32, height: u32) -> Camera {
-		const FIELD_OF_VIEW: f32 = FRAC_PI_3;
-		const DISTANCE: f32 = 10f32;
+	pub fn new(center: Point3<f64>, view_direction: Vector3<f64>, (width, height): (u32, u32)) -> Camera {
+		const FIELD_OF_VIEW: f64 = FRAC_PI_3;
+		const DISTANCE: f64 = 10f64;
+		const CENTER_OFFSET: Vector3<f64> = Vector3{ x: 0f64, y: 5f64, z: 0f64};
 
-		let eye		= Point3::new(0f32, 5f32, DISTANCE);
-		let center	= Point3::new(0f32, 5f32, 0f32);
+		let center  = center + CENTER_OFFSET;
+		let eye		= Point3::from_vec(center.to_vec() - (view_direction * DISTANCE));
 		let forward	= (center - eye).normalize();
-		let right	= forward.cross(Vector3::new(0f32, 1f32, 0f32));
+		let right	= forward.cross(Vector3::new(0f64, 1f64, 0f64));
 		let up		= right.cross(forward);
 		let view	= Matrix4::look_at(eye, center, up);
 
 		let projection = Matrix4::from(PerspectiveFov{
 			fovy: Rad{ s: FIELD_OF_VIEW },
-			aspect: (width as f32) / (height as f32),
-			near: 1f32,
-			far: 100f32
+			aspect: (width as f64) / (height as f64),
+			near: 1f64,
+			far: 100f64,
 		});
 
 		let full = projection * view;
