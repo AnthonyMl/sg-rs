@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use crossbeam::sync::{MsQueue};
 
 use frame_counter::{FrameCounter};
-use context::{Context, ContextType, ContextState};
+use context::{ContextState};
 use input::input_event::{InputEvent};
 use input::input_frame::{InputFrame};
 use input::input_map::{InputMap};
@@ -13,9 +13,9 @@ use frame::{Frame};
 pub struct InputContext {
 	pub input_q: MsQueue<InputEvent>,
 	pub input_map: InputMap,
+	pub output_q: MsQueue<InputFrame>,
+	pub state: ContextState,
 
-	state: ContextState,
-	output_q: MsQueue<InputFrame>,
 	drain_lock: Mutex<()>,
 }
 
@@ -48,28 +48,7 @@ impl InputContext {
 		while let Some(frame) = self.output_q.try_pop() { out.push(frame) }
 		out
 	}
-
-	fn get_frame(&self) -> Arc<InputFrame> {
-		(match self.state().frame() {
-			Frame::Input(f) => Some(f),
-			_ => None,
-		}).unwrap()
-	}
 }
 
 unsafe impl Send for InputContext {}
 unsafe impl Sync for InputContext {}
-
-impl Context for InputContext {
-	fn frequency(&self) -> u64 { 120 }
-
-	fn tick(&self, contexts: Arc<ContextType>) -> Frame {
-		let frame = self.get_frame();
-
-		let new_frame = InputFrame::new(contexts, frame);
-		self.output_q.push(new_frame.clone());
-		Frame::Input(Arc::new(new_frame))
-	}
-
-	fn state(&self) -> &ContextState { &self.state }
-}

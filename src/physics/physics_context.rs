@@ -3,7 +3,7 @@ use std::default::{Default};
 
 use cgmath::{Point3, Vector3};
 
-use context::{Context, ContextType, ContextState};
+use context::{Context, ContextState};
 use camera::{Camera};
 use physics::{PhysicsFrame};
 use frame::{Frame};
@@ -38,15 +38,3 @@ impl PhysicsContext {
 
 unsafe impl Send for PhysicsContext {}
 unsafe impl Sync for PhysicsContext {}
-
-impl Context for PhysicsContext {
-	fn frequency(&self) -> u64 { 120 }
-
-	fn tick(&self, contexts: Arc<ContextType>) -> Frame {
-		let last_frame = self.get_frame();
-
-		Frame::Physics(Arc::new(PhysicsFrame::new(contexts, last_frame)))
-	}
-
-	fn state(&self) -> &ContextState { &self.state }
-}

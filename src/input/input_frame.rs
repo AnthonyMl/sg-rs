@@ -46,13 +46,15 @@ impl InputFrame {
 		if keyboard_state.right    { direction = direction + RIGHT   }
 		if keyboard_state.left     { direction = direction - RIGHT   }
 
-		InputFrame {
+		let frame = InputFrame {
 			frame_counter: frame.frame_counter + 1,
 			action_state: ActionState {
 				movement_direction: direction,
 				view_direction: mouse_movement,
 			},
 			keyboard_state: keyboard_state,
-		}
+		};
+		ic.output_q.push(frame.clone());
+		frame
 	}
 }

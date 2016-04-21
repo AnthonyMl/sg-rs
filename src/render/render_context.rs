@@ -5,13 +5,13 @@ use crossbeam::sync::{MsQueue};
 use render::render_command::{RenderCommand};
 use render::render_frame::{RenderFrame};
 use render::render_uniforms::{RenderUniforms};
-use context::{Context, ContextType, ContextState};
+use context::{ContextState};
 use frame::{Frame};
 
 
 pub struct RenderContext {
 	q: Arc<MsQueue<RenderCommand>>,
-	state: ContextState,
+	pub state: ContextState,
 	window_size: (u32, u32),
 }
 
@@ -30,13 +30,6 @@ impl RenderContext {
 
 	pub fn window_size(&self) -> (u32, u32) {
 		self.window_size
-	}
-
-	pub fn get_frame(&self) -> Arc<RenderFrame> {
-		(match self.state().frame() {
-			Frame::Render(f) => Some(f),
-			_ => None,
-		}).unwrap()
 	}
 
 	// --- Draw Commands --- (candidates for inlining)
@@ -66,15 +59,3 @@ impl RenderContext {
 
 unsafe impl Send for RenderContext {}
 unsafe impl Sync for RenderContext {}
-
-impl Context for RenderContext {
-	fn frequency(&self) -> u64 { 60 }
-
-	fn tick(&self, contexts: Arc<ContextType>) -> Frame {
-		let last_frame = self.get_frame();
-
-		Frame::Render(Arc::new(RenderFrame::new(contexts, last_frame)))
-	}
-
-	fn state(&self) -> &ContextState { &self.state }
-}

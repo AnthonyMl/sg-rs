@@ -4,9 +4,9 @@ use crossbeam::sync::{MsQueue};
 use glium::glutin::{WindowBuilder, CursorState};
 use glium::{DisplayBuild};
 
-use render::{RenderContext, RenderProcessor, RenderCommand};
-use input::{InputContext};
-use physics::{PhysicsContext};
+use render::{RenderContext, RenderProcessor, RenderCommand, RenderFrame};
+use input::{InputContext, InputFrame};
+use physics::{PhysicsContext, PhysicsFrame};
 use context::context_state::{ContextState};
 use frame::{Frame};
 
@@ -89,26 +89,25 @@ pub fn create(window_size: (u32, u32)) -> (Arc<ContextType>, RenderProcessor) {
 		RenderProcessor::new(q, glium_context),
 	)
 }
-/*
-// register_context!(PhysicsContext, PhysicsFrame, 120, tick);
-// fn tick(&self, contexts: Arc<ContextType>, Arc<PhysicsFrame>) -> PhysicsFrame { ...
-//
+
 macro_rules! register_context {
-	($context_type:ty, $frame_type:ty, $erased_frame_type:ty, $frequency:expr, $callback:expr) => {{
+	($context_type:ty, $frame_type:ident, $erased_frame_type:ident, $frequency:expr) => {
 		impl Context for $context_type {
 			fn frequency(&self) -> u64 { $frequency }
 
 			fn tick(&self, contexts: Arc<ContextType>) -> Frame {
 				let last_frame = (match self.state().frame() {
-					$erased_frame_type(f) => Some(f),
+					Frame::$erased_frame_type(f) => Some(f),
 					_ => None,
 				}).unwrap();
 
-				$erased_frame_type(Arc::new($frame_type::new(contexts, last_frame)))
+				Frame::$erased_frame_type(Arc::new($frame_type::new(contexts, last_frame)))
 			}
 
 			fn state(&self) -> &ContextState { &self.state }
 		}
-	}}
+	}
 }
-*/
+register_context!(InputContext,   InputFrame,   Input,   120);
+register_context!(PhysicsContext, PhysicsFrame, Physics, 120);
+register_context!(RenderContext,  RenderFrame,  Render,   60);
