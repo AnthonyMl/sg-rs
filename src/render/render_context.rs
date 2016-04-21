@@ -10,8 +10,9 @@ use frame::{Frame};
 
 
 pub struct RenderContext {
-	q: Arc<MsQueue<RenderCommand>>,
 	pub state: ContextState,
+
+	q: Arc<MsQueue<RenderCommand>>,
 	window_size: (u32, u32),
 }
 

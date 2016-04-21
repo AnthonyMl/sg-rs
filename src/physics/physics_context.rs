@@ -3,7 +3,7 @@ use std::default::{Default};
 
 use cgmath::{Point3, Vector3};
 
-use context::{Context, ContextState};
+use context::{ContextState};
 use camera::{Camera};
 use physics::{PhysicsFrame};
 use frame::{Frame};
@@ -29,7 +29,7 @@ impl PhysicsContext {
 	}
 
 	pub fn get_frame(&self) -> Arc<PhysicsFrame> {
-		(match self.state().frame() {
+		(match self.state.frame() {
 			Frame::Physics(physics_frame) => Some(physics_frame),
 			_ => None,
 		}).unwrap()

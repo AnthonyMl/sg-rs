@@ -11,10 +11,11 @@ use frame::{Frame};
 
 
 pub struct InputContext {
+	pub state: ContextState,
+
 	pub input_q: MsQueue<InputEvent>,
 	pub input_map: InputMap,
 	pub output_q: MsQueue<InputFrame>,
-	pub state: ContextState,
 
 	drain_lock: Mutex<()>,
 }

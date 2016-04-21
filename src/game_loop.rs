@@ -4,7 +4,7 @@ use std::sync::{Arc};
 use time;
 use context;
 use thread_pool::{ThreadPool};
-use context::{Context, ContextType};
+use context::{ContextType};
 
 
 // TODO:
