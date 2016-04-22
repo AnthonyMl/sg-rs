@@ -6,21 +6,22 @@ use render::render_command::{RenderCommand};
 use render::render_frame::{RenderFrame};
 use render::render_uniforms::{RenderUniforms};
 use context::{ContextState};
-use frame::{Frame};
 
 
 pub struct RenderContext {
 	pub state: ContextState,
 
 	q: Arc<MsQueue<RenderCommand>>,
-	window_size: (u32, u32),
+	window_size: (u32, u32), // TODO: maybe this should be a per RenderFrame parameter
 }
 
 impl RenderContext {
 	pub fn new(q: Arc<MsQueue<RenderCommand>>, window_size: (u32, u32)) -> RenderContext {
+		let render_frame = RenderFrame { };
+
 		RenderContext {
+			state: ContextState::new(render_frame),
 			q: q,
-			state: ContextState::new(Frame::Render(Arc::new(RenderFrame{ }))),
 			window_size: window_size,
 		}
 	}

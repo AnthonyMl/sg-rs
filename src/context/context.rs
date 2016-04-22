@@ -8,7 +8,6 @@ use render::{RenderContext, RenderProcessor, RenderCommand, RenderFrame};
 use input::{InputContext, InputFrame};
 use physics::{PhysicsContext, PhysicsFrame};
 use context::context_state::{ContextState};
-use frame::{Frame};
 
 
 // TODO: try to remove Arc dependency
@@ -64,23 +63,8 @@ pub fn create() -> (Arc<ContextType>, RenderProcessor) {
 	)
 }
 
-macro_rules! register_context {
-	($context_type:ty, $frame_type:ident, $erased_frame_type:ident, $frequency:expr) => {
-		impl Context for $context_type {
-			fn frequency(&self) -> u64 { $frequency }
-
-			fn tick(&self, contexts: Arc<ContextType>) -> Frame {
-				let last_frame = (match self.state().frame() {
-					Frame::$erased_frame_type(f) => Some(f),
-					_ => None,
-				}).unwrap();
-
-				Frame::$erased_frame_type(Arc::new($frame_type::new(contexts, last_frame)))
-			}
-
-			fn state(&self) -> &ContextState { &self.state }
-		}
-	}
+pub trait IsFrame: Sized {
+	fn to_frame(self) -> Frame;
 }
 
 macro_rules! mega_context {
@@ -95,9 +79,22 @@ macro_rules! mega_context {
 			}
 		}
 
+		#[derive(Clone)]
+		pub enum Frame {
+			$( $erased_frame_type(Arc<$frame_type>), )*
+		}
+
 		pub struct ContextType {
 			$( $name: Arc<$context_type>, )*
 		}
+
+		$(
+			impl IsFrame for $frame_type {
+				fn to_frame(self) -> Frame {
+					Frame::$erased_frame_type(Arc::new(self))
+				}
+			}
+		)*
 
 		impl ContextType {
 			pub fn contexts(&self) -> Box<[Arc<Context>]> {
@@ -112,7 +109,20 @@ macro_rules! mega_context {
 		}
 
 		$(
-			register_context!($context_type, $frame_type, $erased_frame_type, $frequency);
+			impl Context for $context_type {
+				fn frequency(&self) -> u64 { $frequency }
+
+				fn tick(&self, contexts: Arc<ContextType>) -> Frame {
+					let last_frame = (match self.state().frame() {
+						Frame::$erased_frame_type(f) => Some(f),
+						_ => None,
+					}).unwrap();
+
+					Frame::$erased_frame_type(Arc::new($frame_type::new(contexts, last_frame)))
+				}
+
+				fn state(&self) -> &ContextState { &self.state }
+			}
 		)*
 	};
 }

@@ -2,7 +2,7 @@ use std::sync::{RwLock};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use frame_counter::{FrameCounter};
-use frame::{Frame};
+use context::{Frame, IsFrame};
 
 
 // TODO: do something different if T is unsized
@@ -14,11 +14,11 @@ pub struct ContextState {
 }
 
 impl ContextState {
-	pub fn new(frame: Frame) -> ContextState {
+	pub fn new<T: IsFrame>(frame: T) -> ContextState {
 		ContextState {
 			frame_counter: FrameCounter::new(0),
 			ready_lock: AtomicBool::new(true),
-			frame: RwLock::new(frame),
+			frame: RwLock::new(frame.to_frame()),
 		}
 	}
 
