@@ -1,7 +1,7 @@
 use std::sync::{Arc};
 
 use crossbeam::sync::{MsQueue};
-use glium::glutin::{WindowBuilder, CursorState};
+use glium::glutin::{WindowBuilder, CursorState, get_primary_monitor};
 use glium::{DisplayBuild};
 
 use render::{RenderContext, RenderProcessor, RenderCommand, RenderFrame};
@@ -43,11 +43,15 @@ pub trait Context: Send + Sync {
 	}
 }
 
-pub fn create(window_size: (u32, u32)) -> (Arc<ContextType>, RenderProcessor) {
+pub fn create() -> (Arc<ContextType>, RenderProcessor) {
+	let window_size = get_primary_monitor().get_dimensions();
+	let window_size = (window_size.0/2, window_size.1/2);
+
 	let glium_context = WindowBuilder::new()
 		.with_dimensions(window_size.0, window_size.1)
 		.with_title(format!("SG"))
 		.with_depth_buffer(24)
+		.with_decorations(false)
 		.build_glium().unwrap();
 
 	glium_context.get_window().unwrap().set_cursor_state(CursorState::Grab).ok();
