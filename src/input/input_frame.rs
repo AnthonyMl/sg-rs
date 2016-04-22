@@ -8,7 +8,7 @@ use input::input_event::{InputEvent};
 use context::{ContextType};
 
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default)] // TODO: remove default
 pub struct InputFrame {
 	pub frame_counter: u64,
 	pub action_state: ActionState,
@@ -16,6 +16,8 @@ pub struct InputFrame {
 }
 
 impl InputFrame {
+	pub fn frame_zero() -> InputFrame { Default::default() }
+
 	pub fn new(context: Arc<ContextType>, frame: Arc<InputFrame>) -> InputFrame {
 		let mut keyboard_state = frame.keyboard_state;
 		let mut mouse_movement = Vector2::new(0f64, 0f64);

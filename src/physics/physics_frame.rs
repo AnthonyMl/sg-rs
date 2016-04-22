@@ -15,6 +15,18 @@ pub struct PhysicsFrame {
 }
 
 impl PhysicsFrame {
+	pub fn frame_zero(window_size: (u32, u32)) -> PhysicsFrame {
+		let player_position = Point3::new(0f64, 1f64, 0f64);
+		let view_direction = Vector3::new(0f64, 0f64, 1f64);
+
+		PhysicsFrame {
+			camera:           Camera::new(player_position, view_direction, window_size),
+			player_position:  player_position,
+			view_direction:   view_direction,
+			last_input_frame: Default::default(),
+		}
+	}
+
 	pub fn new(context: Arc<ContextType>, frame: Arc<PhysicsFrame>) -> PhysicsFrame {
 		let mut input_frames = context.input().get_input_frames();
 

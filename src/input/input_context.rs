@@ -2,33 +2,24 @@ use std::sync::{Mutex};
 
 use crossbeam::sync::{MsQueue};
 
-use context::{ContextState};
 use input::input_event::{InputEvent};
 use input::input_frame::{InputFrame};
 use input::input_map::{InputMap};
 
 
 pub struct InputContext {
-	pub state: ContextState,
-
 	pub input_q:   MsQueue<InputEvent>,
 	pub output_q:  MsQueue<InputFrame>,
 	pub input_map: InputMap,
-
-	drain_lock: Mutex<()>,
+	drain_lock:    Mutex<()>,
 }
 
 impl InputContext {
 	pub fn new() -> InputContext {
-		let input_frame: InputFrame = Default::default();
-
 		InputContext {
-			state: ContextState::new(input_frame),
-
 			input_q:    MsQueue::new(),
 			output_q:   MsQueue::new(),
 			input_map:  InputMap{},
-
 			drain_lock: Mutex::new(()),
 		}
 	}

@@ -58,14 +58,15 @@ fn game_loop(contexts: Arc<ContextType>, pool: Arc<Box<ThreadPool>>) -> ! {
 			let rate = NANOSECONDS_PERS_SECOND / context.frequency();
 
 			while time - *last_time > rate {
-				if !context.state().is_ready() { continue 'next_context}
+				let local_context  = context.clone();
+				let local_contexts = contexts.clone();
+
+				if !local_context.is_ready(contexts.clone()) { continue 'next_context}
 
 				*last_time = *last_time + rate;
 
-				let local_context  = context.clone();
-				let local_contexts = contexts.clone();
 				pool.post(Box::new(move || {
-					local_context.do_tick(local_contexts);
+					local_context.tick(local_contexts.clone());
 				}));
 			}
 		}

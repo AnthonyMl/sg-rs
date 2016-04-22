@@ -1,5 +1,4 @@
-pub use self::context::{Context, ContextType, create, Frame, IsFrame};
-pub use self::context_state::{ContextState};
+pub use self::context::{Context, ContextType, create};
 
 mod context_state;
 mod context;

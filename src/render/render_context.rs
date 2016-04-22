@@ -3,31 +3,20 @@ use std::sync::{Arc};
 use crossbeam::sync::{MsQueue};
 
 use render::render_command::{RenderCommand};
-use render::render_frame::{RenderFrame};
 use render::render_uniforms::{RenderUniforms};
-use context::{ContextState};
 
 
 pub struct RenderContext {
-	pub state: ContextState,
-
 	q: Arc<MsQueue<RenderCommand>>,
 	window_size: (u32, u32), // TODO: maybe this should be a per RenderFrame parameter
 }
 
 impl RenderContext {
 	pub fn new(q: Arc<MsQueue<RenderCommand>>, window_size: (u32, u32)) -> RenderContext {
-		let render_frame = RenderFrame { };
-
 		RenderContext {
-			state: ContextState::new(render_frame),
 			q: q,
 			window_size: window_size,
 		}
-	}
-
-	pub fn frame_counter(&self) -> u64 {
-		self.state.frame_counter()
 	}
 
 	pub fn window_size(&self) -> (u32, u32) {

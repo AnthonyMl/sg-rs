@@ -10,8 +10,10 @@ use context::{ContextType};
 pub struct RenderFrame { }
 
 impl RenderFrame {
+	pub fn frame_zero() -> RenderFrame { RenderFrame { } }
+
 	pub fn new(context: Arc<ContextType>, _last_frame: Arc<RenderFrame>) -> RenderFrame {
-		let physics_frame = context.physics().get_frame();
+		let physics_frame = context.frame_physics();
 
 		// TODO: do something about passing the frame counter on every
 		// a guard/builder pattern that sends a command queue to base on drop or something
@@ -19,7 +21,7 @@ impl RenderFrame {
 
 		let rc = context.render();
 
-		let frame_counter = rc.frame_counter();
+		let frame_counter = context.counter_render();
 
 		rc.clear_screen(frame_counter);
 
@@ -39,6 +41,6 @@ impl RenderFrame {
 
 		rc.swap_buffers(frame_counter);
 
-		RenderFrame{ }
+		RenderFrame { }
 	}
 }

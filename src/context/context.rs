@@ -1,10 +1,10 @@
-use std::sync::{Arc};
+use std::sync::{Arc, RwLock};
 
 use crossbeam::sync::{MsQueue};
 use glium::glutin::{WindowBuilder, CursorState, get_primary_monitor};
 use glium::{DisplayBuild};
 
-use render::{RenderContext, RenderProcessor, RenderCommand, RenderFrame};
+use render::{RenderContext, RenderProcessor, RenderFrame};
 use input::{InputContext, InputFrame};
 use physics::{PhysicsContext, PhysicsFrame};
 use context::context_state::{ContextState};
@@ -14,32 +14,13 @@ use context::context_state::{ContextState};
 // TODO: maybe rename ContextType->Context and Context->IsContext or something like that?
 //
 
-impl ContextType {
-	fn new(q: Arc<MsQueue<RenderCommand>>, window_size: (u32, u32)) -> ContextType {
-		let ai = Arc::new(InputContext::new());
-		let ap = Arc::new(PhysicsContext::new(window_size));
-		let ar = Arc::new(RenderContext::new(q, window_size));
-
-		ContextType {
-			input:   ai.clone(),
-			physics: ap.clone(),
-			render:  ar.clone(),
-		}
-	}
-}
 unsafe impl Send for ContextType {}
 unsafe impl Sync for ContextType {}
 
 pub trait Context: Send + Sync {
-	fn frequency(&self) -> u64;     // TODO: can this be static?
-	fn state(&self) -> &ContextState;
-	fn tick(&self, Arc<ContextType>) -> Frame;
-
-	fn do_tick(&self, contexts: Arc<ContextType>) {
-		self.state().tick_enter();
-		let f = self.tick(contexts);
-		self.state().tick_exit(f);
-	}
+	fn frequency(&self) -> u64;
+	fn is_ready(&self, context: Arc<ContextType>) -> bool;
+	fn tick(&self,     context: Arc<ContextType>);
 }
 
 pub fn create() -> (Arc<ContextType>, RenderProcessor) {
@@ -57,54 +38,70 @@ pub fn create() -> (Arc<ContextType>, RenderProcessor) {
 
 	let q = Arc::new(MsQueue::new());
 
+	let input   = InputContext  ::new();
+	let physics = PhysicsContext::new();
+	let render  = RenderContext ::new(q.clone(), window_size);
+
+	let frame_input   = InputFrame  ::frame_zero();
+	let frame_physics = PhysicsFrame::frame_zero(window_size);
+	let frame_render  = RenderFrame ::frame_zero();
+
 	(
-		Arc::new(ContextType::new(q.clone(), window_size)),
+		Arc::new(ContextType::new(input, physics, render, frame_input, frame_physics, frame_render)),
 		RenderProcessor::new(q, glium_context),
 	)
 }
 
-pub trait IsFrame: Sized {
-	fn to_frame(self) -> Frame;
-}
-
-macro_rules! mega_context {
-	( $({ $context_type:ty, $frame_type:ident, $erased_frame_type:ident, $name:ident, $frequency:expr }),* ) => {
+macro_rules! register_contexts {
+	($({ $context_type:ty, $frame_type:ident, $kind:ident, $name:ident, $fn_frame:ident, $fn_counter:ident, $frequency:expr }),* ) => {
 		enum ContextKind {
-			$( $erased_frame_type(Arc<$context_type>), )*
+			$( $kind(Arc<$context_type>), )*
 		}
 
 		fn to_context(context: &ContextKind) -> Arc<Context> {
 			match *context {
-				$( ContextKind::$erased_frame_type(ref $name) => $name.clone(), )*
+				$( ContextKind::$kind(ref $name) => $name.clone(), )*
 			}
-		}
-
-		#[derive(Clone)]
-		pub enum Frame {
-			$( $erased_frame_type(Arc<$frame_type>), )*
 		}
 
 		pub struct ContextType {
-			$( $name: Arc<$context_type>, )*
+			$( $name: (Arc<$context_type>, ContextState, RwLock<Arc<$frame_type>>), )*
 		}
 
-		$(
-			impl IsFrame for $frame_type {
-				fn to_frame(self) -> Frame {
-					Frame::$erased_frame_type(Arc::new(self))
+		impl ContextType {
+			pub fn new(
+				$($name: $context_type,)*
+				$($fn_frame: $frame_type,)*
+			) -> ContextType
+			{
+				ContextType {
+					$($name: (
+						Arc::new($name),
+						ContextState::new(),
+						RwLock::new(Arc::new($fn_frame)),
+					),)*
 				}
 			}
-		)*
 
-		impl ContextType {
 			pub fn contexts(&self) -> Box<[Arc<Context>]> {
 				[$(
-					ContextKind::$erased_frame_type(self.$name.clone()),
+					ContextKind::$kind(self.$name.0.clone()),
 				)*].into_iter().map(to_context).collect::<Vec<Arc<Context>>>().into_boxed_slice()
 			}
 
 			$(
-				pub fn $name(&self) -> Arc<$context_type> { self.$name.clone() }
+				#[allow(dead_code)]
+				pub fn $name(&self) -> Arc<$context_type> { self.$name.0.clone() }
+
+				#[allow(dead_code)]
+				pub fn $fn_frame(&self) -> Arc<$frame_type> {
+					(self.$name.2.read().unwrap()).clone()
+				}
+
+				#[allow(dead_code)]
+				pub fn $fn_counter(&self) -> u64 {
+					self.$name.1.frame_counter()
+				}
 			)*
 		}
 
@@ -112,23 +109,27 @@ macro_rules! mega_context {
 			impl Context for $context_type {
 				fn frequency(&self) -> u64 { $frequency }
 
-				fn tick(&self, contexts: Arc<ContextType>) -> Frame {
-					let last_frame = (match self.state().frame() {
-						Frame::$erased_frame_type(f) => Some(f),
-						_ => None,
-					}).unwrap();
+				fn tick(&self, context: Arc<ContextType>) {
+					let last_frame = (*context.$name.2.read().unwrap()).clone();
+					context.$name.1.increment();
 
-					Frame::$erased_frame_type(Arc::new($frame_type::new(contexts, last_frame)))
+					let new_frame = $frame_type::new(context.clone(), last_frame);
+
+					(*context.$name.2.write().unwrap()) = Arc::new(new_frame);
+
+					context.$name.1.release_ready_lock();
 				}
 
-				fn state(&self) -> &ContextState { &self.state }
+				fn is_ready(&self, context: Arc<ContextType>) -> bool {
+					context.$name.1.is_ready()
+				}
 			}
 		)*
 	};
 }
 
-mega_context!(
-	{ InputContext,   InputFrame,   Input,   input,   120 },
-	{ PhysicsContext, PhysicsFrame, Physics, physics, 120 },
-	{ RenderContext,  RenderFrame,  Render,  render,   60 }
+register_contexts!(
+	{ InputContext,   InputFrame,   Input,   input,   frame_input,   counter_input,   120 },
+	{ PhysicsContext, PhysicsFrame, Physics, physics, frame_physics, counter_physics, 120 },
+	{ RenderContext,  RenderFrame,  Render,  render,  frame_render,  counter_render,   60 }
 );
