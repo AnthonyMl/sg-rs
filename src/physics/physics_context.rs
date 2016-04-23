@@ -1,7 +1,7 @@
-pub struct PhysicsContext { }
+pub struct PhysicsContext;
 
 impl PhysicsContext {
-	pub fn new() -> PhysicsContext { PhysicsContext { } }
+	pub fn new() -> PhysicsContext { PhysicsContext }
 }
 
 unsafe impl Send for PhysicsContext {}

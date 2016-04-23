@@ -7,10 +7,10 @@ use render::uniform_wrappers::{UMatrix4};
 use context::{ContextType};
 
 
-pub struct RenderFrame { }
+pub struct RenderFrame;
 
 impl RenderFrame {
-	pub fn frame_zero() -> RenderFrame { RenderFrame { } }
+	pub fn frame_zero() -> RenderFrame { RenderFrame }
 
 	pub fn new(context: Arc<ContextType>, _last_frame: Arc<RenderFrame>) -> RenderFrame {
 		let physics_frame = context.frame_physics();
@@ -41,6 +41,6 @@ impl RenderFrame {
 
 		rc.swap_buffers(frame_counter);
 
-		RenderFrame { }
+		RenderFrame
 	}
 }
