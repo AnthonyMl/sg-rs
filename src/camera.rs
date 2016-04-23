@@ -5,7 +5,8 @@ use cgmath::{Matrix4, Point, Point3, Vector3, PerspectiveFov, Rad, EuclideanVect
 
 #[derive(Clone)]
 pub struct Camera {
-	pub mtx_full: Matrix4<f64>,
+	pub view:       Matrix4<f64>,
+	pub projection: Matrix4<f64>
 }
 
 impl Camera {
@@ -28,10 +29,9 @@ impl Camera {
 			far: 100f64,
 		});
 
-		let full = projection * view;
-
 		Camera {
-			mtx_full: full,
+			view: view,
+			projection: projection,
 		}
 	}
 }

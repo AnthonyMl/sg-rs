@@ -42,11 +42,12 @@ impl RenderProcessor {
 
 			out vec3 v_normal;
 
-			uniform mat4 mvp;
+			uniform mat4 model;
+			uniform mat4 model_view_projection;
 
 			void main() {
-				v_normal = normalize((mvp * vec4(normal, 0.0)).xyz);
-				gl_Position = mvp * vec4(position, 1.0);
+				v_normal = normalize((model * vec4(normal, 0.0)).xyz);
+				gl_Position = model_view_projection * vec4(position, 1.0);
 			}
 		"#;
 		let fragment_source = r#"
@@ -149,7 +150,8 @@ impl RenderProcessor {
 				let mut frame = self.frames.get_mut(&$frame_counter).unwrap();
 
 				let uniform_buffer = uniform! {
-					mvp: $uniforms.mvp,
+					model:                 $uniforms.model,
+					model_view_projection: $uniforms.model_view_projection,
 				};
 
 				frame.draw(
