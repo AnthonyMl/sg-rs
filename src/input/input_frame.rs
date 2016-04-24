@@ -5,7 +5,7 @@ use cgmath::{Vector2};
 use action_state::{ActionState};
 use input::keyboard_state::{KeyboardState};
 use input::input_event::{InputEvent};
-use context::{ContextType};
+use context::{Context};
 
 
 #[derive(Clone, Default)] // TODO: remove default
@@ -18,7 +18,7 @@ pub struct InputFrame {
 impl InputFrame {
 	pub fn frame_zero() -> InputFrame { Default::default() }
 
-	pub fn new(context: Arc<ContextType>, frame: Arc<InputFrame>) -> InputFrame {
+	pub fn new(context: Arc<Context>, frame: Arc<InputFrame>) -> InputFrame {
 		let mut keyboard_state = frame.keyboard_state;
 		let mut mouse_movement = Vector2::new(0f64, 0f64);
 		let ic = context.input();

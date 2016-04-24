@@ -1,5 +1,3 @@
-use std::sync::{Mutex};
-
 use crossbeam::sync::{MsQueue};
 
 use input::input_event::{InputEvent};
@@ -11,7 +9,6 @@ pub struct InputContext {
 	pub input_q:   MsQueue<InputEvent>,
 	pub output_q:  MsQueue<InputFrame>,
 	pub input_map: InputMap,
-	drain_lock:    Mutex<()>,
 }
 
 impl InputContext {
@@ -20,7 +17,6 @@ impl InputContext {
 			input_q:    MsQueue::new(),
 			output_q:   MsQueue::new(),
 			input_map:  InputMap{},
-			drain_lock: Mutex::new(()),
 		}
 	}
 
@@ -32,7 +28,6 @@ impl InputContext {
 
 	pub fn get_input_frames(&self) -> Vec<InputFrame> {
 		let mut out = Vec::new();
-		let _ = self.drain_lock.lock().unwrap();
 		while let Some(frame) = self.output_q.try_pop() { out.push(frame) }
 		out
 	}

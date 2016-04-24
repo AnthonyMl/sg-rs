@@ -1,29 +1,39 @@
-use std::sync::{Arc, RwLock};
+use std::thread;
+use std::sync::{Arc};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crossbeam::sync::{MsQueue};
 use glium::glutin::{WindowBuilder, CursorState, get_primary_monitor};
 use glium::{DisplayBuild};
+use mioco;
+use mioco::{Mioco, Config};
+use mioco::sync::{RwLock};
+use mioco::sync::mpsc::{Receiver, Sender, channel};
+use time;
 
 use render::{RenderContext, RenderProcessor, RenderFrame};
 use input::{InputContext, InputFrame};
 use physics::{PhysicsContext, PhysicsFrame};
-use context::context_state::{ContextState};
+use frame_counter::{FrameCounter};
+use scheduler::{BalancingScheduler};
 
 
 // TODO: try to remove Arc dependency
-// TODO: maybe rename ContextType->Context and Context->IsContext or something like that?
+//
+// job should have priority
+// job should have estimated length
+// 		s.t. the gl thread only does short, high priority tasks
 //
 
-unsafe impl Send for ContextType {}
-unsafe impl Sync for ContextType {}
+// --- THREADING MODEL ---
+// n worker threads where n is the number of cores on the system
+// 1 lightweight event processing / frame_kicking / gl thread (TODO: minimize gl tasks to actual gl calls)
+//
 
-pub trait Context: Send + Sync {
-	fn frequency(&self) -> u64;
-	fn is_ready(&self, context: Arc<ContextType>) -> bool;
-	fn tick(&self,     context: Arc<ContextType>);
-}
+unsafe impl Send for Context {}
+unsafe impl Sync for Context {}
 
-pub fn create() -> (Arc<ContextType>, RenderProcessor) {
+pub fn init() {
 	let window_size = get_primary_monitor().get_dimensions();
 	let window_size = (window_size.0/2, window_size.1/2);
 
@@ -38,55 +48,58 @@ pub fn create() -> (Arc<ContextType>, RenderProcessor) {
 
 	let q = Arc::new(MsQueue::new());
 
-	let input   = InputContext  ::new();
-	let physics = PhysicsContext::new();
-	let render  = RenderContext ::new(q.clone(), window_size);
+	let context = Arc::new(Context::new(
+		InputContext  ::new(),                       InputFrame    ::frame_zero(),
+		PhysicsContext::new(),                       PhysicsFrame  ::frame_zero(window_size),
+		RenderContext ::new(q.clone(), window_size), RenderFrame   ::frame_zero(),)
+	);
 
-	let frame_input   = InputFrame  ::frame_zero();
-	let frame_physics = PhysicsFrame::frame_zero(window_size);
-	let frame_render  = RenderFrame ::frame_zero();
+	let mut render_processor = RenderProcessor::new(q, glium_context);
 
-	(
-		Arc::new(ContextType::new(input, physics, render, frame_input, frame_physics, frame_render)),
-		RenderProcessor::new(q, glium_context),
-	)
+	let (senders, receivers) = (vec![
+		channel::<()>(),
+		channel::<()>(),
+		channel::<()>(),
+	]).into_iter().unzip();
+
+	let mut frame_kicker = FrameKicker::new(senders);
+
+	{
+		let ready_flags = vec![
+			frame_kicker.input  .ready.clone(),
+			frame_kicker.physics.ready.clone(),
+			frame_kicker.render .ready.clone(),
+		];
+		let context = context.clone();
+		thread::spawn(move || { spawn_coroutines(context, receivers, ready_flags); });
+	}
+
+	// TODO: may need to be refactored to handle system events more frequently/(lower max latency)
+	//
+	while let Some(events) = render_processor.handle_system_events() {
+		context.input().post_input_events(events);
+
+		frame_kicker.tick();
+
+		render_processor.handle_render_commands();
+
+		thread::yield_now();
+	}
 }
 
 macro_rules! register_contexts {
-	($({ $context_type:ty, $frame_type:ident, $kind:ident, $name:ident, $fn_frame:ident, $fn_counter:ident, $frequency:expr }),* ) => {
-		enum ContextKind {
-			$( $kind(Arc<$context_type>), )*
+	($({ $context_type:ty, $frame_type:ident, $name:ident, $fn_frame:ident, $fn_counter:ident, $frequency:expr }),* ) => {
+		pub struct Context {
+			$( $name: (Arc<$context_type>, FrameCounter, RwLock<Arc<$frame_type>>), )*
 		}
 
-		fn to_context(context: &ContextKind) -> Arc<Context> {
-			match *context {
-				$( ContextKind::$kind(ref $name) => $name.clone(), )*
-			}
-		}
-
-		pub struct ContextType {
-			$( $name: (Arc<$context_type>, ContextState, RwLock<Arc<$frame_type>>), )*
-		}
-
-		impl ContextType {
-			pub fn new(
-				$($name: $context_type,)*
-				$($fn_frame: $frame_type,)*
-			) -> ContextType
-			{
-				ContextType {
-					$($name: (
-						Arc::new($name),
-						ContextState::new(),
-						RwLock::new(Arc::new($fn_frame)),
-					),)*
-				}
-			}
-
-			pub fn contexts(&self) -> Box<[Arc<Context>]> {
-				[$(
-					ContextKind::$kind(self.$name.0.clone()),
-				)*].into_iter().map(to_context).collect::<Vec<Arc<Context>>>().into_boxed_slice()
+		impl Context {
+			pub fn new($( $name: $context_type, $fn_frame: $frame_type, )*) -> Context {
+				Context { $( $name: (
+					Arc::new($name),
+					FrameCounter::new(0),
+					RwLock::new(Arc::new($fn_frame)),
+				), )* }
 			}
 
 			$(
@@ -100,36 +113,77 @@ macro_rules! register_contexts {
 
 				#[allow(dead_code)]
 				pub fn $fn_counter(&self) -> u64 {
-					self.$name.1.frame_counter()
+					self.$name.1.get()
 				}
 			)*
 		}
 
-		$(
-			impl Context for $context_type {
-				fn frequency(&self) -> u64 { $frequency }
+		struct KickData {
+			ready:     Arc<AtomicBool>,
+			sender:    Sender<()>,
+			last_time: u64,
+		}
+		struct FrameKicker { $( pub $name: KickData, )* }
 
-				fn tick(&self, context: Arc<ContextType>) {
-					let last_frame = (*context.$name.2.read().unwrap()).clone();
-					context.$name.1.increment();
+		impl FrameKicker {
+			pub fn new(mut senders: Vec<Sender<()>>) -> FrameKicker {
+				let time = time::precise_time_ns() / 1_000_000;
 
-					let new_frame = $frame_type::new(context.clone(), last_frame);
-
-					(*context.$name.2.write().unwrap()) = Arc::new(new_frame);
-
-					context.$name.1.release_ready_lock();
-				}
-
-				fn is_ready(&self, context: Arc<ContextType>) -> bool {
-					context.$name.1.is_ready()
-				}
+				FrameKicker { $( $name: KickData {
+					ready:     Arc::new(AtomicBool::new(true)),
+					sender:    senders.pop().unwrap(),
+					last_time: time,
+				}, )* }
 			}
-		)*
+
+			pub fn tick(&mut self) {
+				let time = time::precise_time_ns() / 1_000_000;
+				$(
+					while self.$name.last_time < time && self.$name.ready.load(Ordering::Relaxed) {
+						self.$name.last_time += 1000 / $frequency;
+						self.$name.sender.send(()).unwrap();
+					}
+				)*
+			}
+		}
+
+		pub fn spawn_coroutines(context: Arc<Context>, mut receivers: Vec<Receiver<()>>, mut ready_flags: Vec<Arc<AtomicBool>>) {
+			const NUM_THREADS: usize = 4;
+
+			let mut config = Config::new();
+			config.set_thread_num(NUM_THREADS);
+			config.set_scheduler(Box::new(BalancingScheduler::new(NUM_THREADS)));
+
+			Mioco::new_configured(config).start(move || { $(
+				fn $fn_frame(context: Arc<Context>, receiver: Receiver<()>, ready_flag: Arc<AtomicBool>) {
+					let mut frame = { context.$name.2.read().unwrap().clone() };
+
+					loop {
+						receiver.recv().unwrap();
+
+						frame = Arc::new($frame_type::new(context.clone(), frame));
+
+						context.$name.1.increment();
+
+						{ *(context.$name.2.write().unwrap()) = frame.clone(); }
+
+						ready_flag.store(true, Ordering::Relaxed);
+					}
+				}
+
+				{
+					let context    = context.clone();
+					let receiver   = receivers.pop().unwrap();
+					let ready_flag = ready_flags.pop().unwrap();
+					mioco::spawn(move || { $fn_frame(context, receiver, ready_flag); });
+				}
+			)*}).unwrap();
+		}
 	};
 }
 
 register_contexts!(
-	{ InputContext,   InputFrame,   Input,   input,   frame_input,   counter_input,   120 },
-	{ PhysicsContext, PhysicsFrame, Physics, physics, frame_physics, counter_physics, 120 },
-	{ RenderContext,  RenderFrame,  Render,  render,  frame_render,  counter_render,   60 }
+	{ InputContext,   InputFrame,   input,   frame_input,   counter_input,   120 },
+	{ PhysicsContext, PhysicsFrame, physics, frame_physics, counter_physics, 120 },
+	{ RenderContext,  RenderFrame,  render,  frame_render,  counter_render,   60 }
 );

@@ -4,7 +4,7 @@ use cgmath::{Matrix4, Vector3, Vector4, SquareMatrix, EuclideanSpace, InnerSpace
 
 use render::render_uniforms::{RenderUniforms};
 use render::uniform_wrappers::{UMatrix4};
-use context::{ContextType};
+use context::{Context};
 
 
 pub struct RenderFrame;
@@ -12,13 +12,12 @@ pub struct RenderFrame;
 impl RenderFrame {
 	pub fn frame_zero() -> RenderFrame { RenderFrame }
 
-	pub fn new(context: Arc<ContextType>, _last_frame: Arc<RenderFrame>) -> RenderFrame {
+	pub fn new(context: Arc<Context>, _last_frame: Arc<RenderFrame>) -> RenderFrame {
 		let physics_frame = context.frame_physics();
 
 		// TODO: do something about passing the frame counter on every
 		// a guard/builder pattern that sends a command queue to base on drop or something
 		//
-
 		let rc = context.render();
 
 		let frame_counter = context.counter_render();

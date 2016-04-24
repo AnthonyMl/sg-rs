@@ -18,12 +18,12 @@ use input::{InputEvent};
 // TODO: We can remove clear calls if we clear in the swapbuffers (and replace our old frame objec with a new one)
 //
 pub struct RenderProcessor {
-	q: Arc<MsQueue<RenderCommand>>,
-	context: GlutinFacade, // TODO: can we use a better type here
-	frames: HashMap<u64, Frame>,
-	player: Model,
-	scene: Scene,
-	program: Program,
+	q:               Arc<MsQueue<RenderCommand>>,
+	context:         GlutinFacade, // TODO: can we use a better type here
+	frames:          HashMap<u64, Frame>,
+	player:          Model,
+	scene:           Scene,
+	program:         Program,
 	draw_parameters: DrawParameters<'static>,
 }
 

@@ -1,4 +1,3 @@
-pub use self::context::{Context, ContextType, create};
+pub use self::context::{Context, init};
 
-mod context_state;
 mod context;
