@@ -4,7 +4,7 @@ use glium::{VertexBuffer, IndexBuffer};
 use glium::index::{PrimitiveType};
 use glium::backend::glutin_backend::{GlutinFacade};
 use tobj;
-use cgmath::{Point3, Vector3, EuclideanVector};
+use cgmath::{Point3, Vector3, InnerSpace};
 
 use render::{Vertex3};
 

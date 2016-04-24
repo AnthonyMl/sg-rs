@@ -1,6 +1,6 @@
 use std::f64::consts::{FRAC_PI_3};
 
-use cgmath::{Matrix4, Point, Point3, Vector3, PerspectiveFov, Rad, EuclideanVector};
+use cgmath::{Matrix4, Point3, Vector3, PerspectiveFov, Rad, EuclideanSpace, InnerSpace};
 
 
 #[derive(Clone)]

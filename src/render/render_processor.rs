@@ -118,7 +118,7 @@ impl RenderProcessor {
 						id: key_code,
 					});
 				},
-				Event::MouseMoved((x, y)) => {
+				Event::MouseMoved(x, y) => {
 					let (cx, cy) = (width / 2, height / 2);
 
 					if x == cx && y == cy { continue }

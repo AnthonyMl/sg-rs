@@ -1,6 +1,6 @@
 use std::sync::{Arc};
 
-use cgmath::{Matrix4, Point, Vector3, Vector4, EuclideanVector, SquareMatrix};
+use cgmath::{Matrix4, Vector3, Vector4, SquareMatrix, EuclideanSpace, InnerSpace};
 
 use render::render_uniforms::{RenderUniforms};
 use render::uniform_wrappers::{UMatrix4};

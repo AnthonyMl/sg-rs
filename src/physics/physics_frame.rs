@@ -1,6 +1,6 @@
 use std::sync::{Arc};
 
-use cgmath::{Point3, Vector3, Vector2, EuclideanVector};
+use cgmath::{Point3, Vector3, Vector2, InnerSpace};
 
 use camera::{Camera};
 use input::{InputFrame};
