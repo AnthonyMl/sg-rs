@@ -159,7 +159,7 @@ macro_rules! register_contexts {
 					let mut frame = { context.$name.2.read().unwrap().clone() };
 
 					loop {
-						receiver.recv().unwrap();
+						if receiver.recv().is_err() { mioco::shutdown(); };
 
 						frame = Arc::new($frame_type::new(context.clone(), frame));
 

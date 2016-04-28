@@ -1,6 +1,7 @@
 use std::sync::{Arc};
 
 use cgmath::{Vector2};
+use mioco;
 
 use action_state::{ActionState};
 use input::keyboard_state::{KeyboardState};
@@ -33,8 +34,10 @@ impl InputFrame {
 				},
 				InputEvent::MouseMoved{ dx, dy } => {
 					mouse_movement = mouse_movement + Vector2::new(dx, dy);
-				}
-				_ => {}
+				},
+				InputEvent::Quit => {
+					mioco::shutdown();
+				},
 			}
 		}
 

@@ -2,7 +2,7 @@ use glium::glutin::{VirtualKeyCode};
 
 
 pub enum InputEvent {
-	Quit, // TODO: does anything use this?
+	Quit,
 	KeyboardInput {
 		pressed: bool,
 		id: VirtualKeyCode,

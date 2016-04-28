@@ -110,6 +110,7 @@ impl RenderProcessor {
 				},
 				Event::KeyboardInput(_, _, Some(VirtualKeyCode::Escape)) => {
 					println!("Exiting due to escape key");
+					out.push(InputEvent::Quit);
 					return None;
 				},
 				Event::KeyboardInput(state, _, Some(key_code)) => {
