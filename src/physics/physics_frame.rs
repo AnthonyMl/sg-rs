@@ -35,10 +35,7 @@ impl PhysicsFrame {
 		);
 		let right = frame.view_direction.cross(Vector3::new(0f64, 1f64, 0f64)).normalize();
 		let up = right.cross(frame.view_direction).normalize();
-		let view_direction
-			= frame.view_direction
-			+ right * view_delta.x
-			-    up * view_delta.y;
+		let view_direction = (frame.view_direction + right * view_delta.x - up * view_delta.y).normalize();
 
 		let input_direction: Vector2<f64> = input_frames.iter().fold(
 			Vector2::new(0f64, 0f64),
