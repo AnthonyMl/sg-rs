@@ -1,7 +1,7 @@
 use std::path::{Path};
 
 use model::{Model};
-use glium::backend::glutin_backend::{GlutinFacade};
+use glium::backend::{Facade};
 
 
 pub struct Scene {
@@ -9,11 +9,11 @@ pub struct Scene {
 }
 
 impl Scene {
-	pub fn new(context: &GlutinFacade) -> Scene {
+	pub fn new<T: Facade>(facade: &T) -> Scene {
 		const SCENE_PATH_STRING: &'static str = "./data/level.obj";
 
 		Scene {
-			model: Model::new(context, &Path::new(SCENE_PATH_STRING)),
+			model: Model::new(facade, &Path::new(SCENE_PATH_STRING)),
 		}
 	}
 }

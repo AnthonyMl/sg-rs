@@ -2,7 +2,7 @@ use std::path::{Path};
 
 use glium::{VertexBuffer, IndexBuffer};
 use glium::index::{PrimitiveType};
-use glium::backend::glutin_backend::{GlutinFacade};
+use glium::backend::{Facade};
 use tobj;
 use cgmath::{Point3, Vector3, InnerSpace};
 
@@ -15,7 +15,7 @@ pub struct Model {
 }
 
 impl Model {
-	pub fn new(context: &GlutinFacade, path: &Path) -> Model {
+	pub fn new<T: Facade>(facade: &T, path: &Path) -> Model {
 		let error_message = &format!("Unable to load Model({})", path.to_str().unwrap());
 
 		let model: tobj::Model = tobj::load_obj(path).expect(error_message).0.pop().expect(error_message);
@@ -40,8 +40,8 @@ impl Model {
 		).collect();
 
 		Model {
-			vertex_buffer: VertexBuffer::new(context, &vertices).unwrap(),
-			index_buffer: IndexBuffer::new(context, PrimitiveType::TrianglesList, &model.mesh.indices).unwrap(),
+			vertex_buffer: VertexBuffer::new(facade, &vertices).unwrap(),
+			index_buffer:  IndexBuffer ::new(facade, PrimitiveType::TrianglesList, &model.mesh.indices).unwrap(),
 		}
 	}
 

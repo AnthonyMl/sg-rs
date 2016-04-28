@@ -19,7 +19,7 @@ use input::{InputEvent};
 //
 pub struct RenderProcessor {
 	q:               Arc<MsQueue<RenderCommand>>,
-	context:         GlutinFacade, // TODO: can we use a better type here
+	facade:          GlutinFacade,
 	frames:          HashMap<u64, Frame>,
 	player:          Model,
 	scene:           Scene,
@@ -28,11 +28,11 @@ pub struct RenderProcessor {
 }
 
 impl RenderProcessor {
-	pub fn new(q: Arc<MsQueue<RenderCommand>>, context: GlutinFacade) -> RenderProcessor {
+	pub fn new(q: Arc<MsQueue<RenderCommand>>, facade: GlutinFacade) -> RenderProcessor {
 		const PLAYER_PATH_STRING: &'static str = "./data/player.obj";
-		let player = Model::new(&context, &Path::new(PLAYER_PATH_STRING));
+		let player = Model::new(&facade, &Path::new(PLAYER_PATH_STRING));
 
-		let scene = Scene::new(&context);
+		let scene = Scene::new(&facade);
 
 		let vertex_source = r#"
 			#version 140
@@ -66,7 +66,7 @@ impl RenderProcessor {
 		"#;
 		// TODO: make sure constants are right
 
-		let program = match Program::from_source(&context, vertex_source, fragment_source, None) {
+		let program = match Program::from_source(&facade, vertex_source, fragment_source, None) {
 			Ok(p) => p,
 			Err(e) => {
 				println!("Unable to compile shaders: {}", e);
@@ -76,7 +76,7 @@ impl RenderProcessor {
 
 		RenderProcessor {
 			q: q,
-			context: context,
+			facade: facade,
 			frames: HashMap::new(),
 			player: player,
 			scene: scene,
@@ -98,10 +98,10 @@ impl RenderProcessor {
 	pub fn handle_system_events(&self) -> Option<Vec<InputEvent>> {
 		let mut out = Vec::new();
 
-		let (width, height) = self.context.get_window().unwrap().get_inner_size().unwrap();
+		let (width, height) = self.facade.get_window().unwrap().get_inner_size().unwrap();
 		let (width, height) = (width as i32, height as i32);
 
-		for event in self.context.poll_events() {
+		for event in self.facade.poll_events() {
 			match event {
 				Event::Closed => {
 					println!("Exiting due to quit event");
@@ -124,7 +124,7 @@ impl RenderProcessor {
 
 					if x == cx && y == cy { continue }
 
-					self.context.get_window().unwrap().set_cursor_position(cx, cy).ok();
+					self.facade.get_window().unwrap().set_cursor_position(cx, cy).ok();
 					out.push(InputEvent::MouseMoved {
 						dx: ((x - cx) as f64) / (cx as f64),
 						dy: ((y - cy) as f64) / (cy as f64),
@@ -167,7 +167,7 @@ impl RenderProcessor {
 		while let Some(job) = self.q.try_pop() {
 			match job {
 				RenderCommand::ClearScreen{ frame_counter } => {
-					let mut frame = self.context.draw();
+					let mut frame = self.facade.draw();
 					frame.clear_color_and_depth((0.125f32, 0.25f32, 0.5f32, 1.0f32), 1.0);
 					self.frames.insert(frame_counter, frame);
 				},
