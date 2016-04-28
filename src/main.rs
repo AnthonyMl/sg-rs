@@ -12,7 +12,6 @@ mod render;
 mod physics;
 mod input;
 mod camera;
-mod frame_counter;
 mod model;
 mod scene;
 mod action_state;

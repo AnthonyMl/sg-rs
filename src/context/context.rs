@@ -14,7 +14,6 @@ use time;
 use render::{RenderContext, RenderProcessor, RenderFrame};
 use input::{InputContext, InputFrame};
 use physics::{PhysicsContext, PhysicsFrame};
-use frame_counter::{FrameCounter};
 use scheduler::{BalancingScheduler};
 
 
@@ -90,14 +89,13 @@ pub fn init() {
 macro_rules! register_contexts {
 	($({ $context_type:ty, $frame_type:ident, $name:ident, $fn_frame:ident, $fn_counter:ident, $frequency:expr }),* ) => {
 		pub struct Context {
-			$( $name: (Arc<$context_type>, FrameCounter, RwLock<Arc<$frame_type>>), )*
+			$( $name: (Arc<$context_type>, RwLock<Arc<$frame_type>>), )*
 		}
 
 		impl Context {
 			pub fn new($( $name: $context_type, $fn_frame: $frame_type, )*) -> Context {
 				Context { $( $name: (
 					Arc::new($name),
-					FrameCounter::new(0),
 					RwLock::new(Arc::new($fn_frame)),
 				), )* }
 			}
@@ -108,12 +106,7 @@ macro_rules! register_contexts {
 
 				#[allow(dead_code)]
 				pub fn $fn_frame(&self) -> Arc<$frame_type> {
-					(self.$name.2.read().unwrap()).clone()
-				}
-
-				#[allow(dead_code)]
-				pub fn $fn_counter(&self) -> u64 {
-					self.$name.1.get()
+					(self.$name.1.read().unwrap()).clone()
 				}
 			)*
 		}
@@ -156,16 +149,14 @@ macro_rules! register_contexts {
 
 			Mioco::new_configured(config).start(move || { $(
 				fn $fn_frame(context: Arc<Context>, receiver: Receiver<()>, ready_flag: Arc<AtomicBool>) {
-					let mut frame = { context.$name.2.read().unwrap().clone() };
+					let mut frame = { context.$name.1.read().unwrap().clone() };
 
 					loop {
 						if receiver.recv().is_err() { mioco::shutdown(); };
 
 						frame = Arc::new($frame_type::new(context.clone(), frame));
 
-						context.$name.1.increment();
-
-						{ *(context.$name.2.write().unwrap()) = frame.clone(); }
+						{ *(context.$name.1.write().unwrap()) = frame.clone(); }
 
 						ready_flag.store(true, Ordering::Relaxed);
 					}

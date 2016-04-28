@@ -7,12 +7,16 @@ use render::uniform_wrappers::{UMatrix4};
 use context::{Context};
 
 
-pub struct RenderFrame;
+pub struct RenderFrame {
+	frame_counter: u64,
+}
 
 impl RenderFrame {
-	pub fn frame_zero() -> RenderFrame { RenderFrame }
+	pub fn frame_zero() -> RenderFrame { RenderFrame {
+		frame_counter: 0,
+	}}
 
-	pub fn new(context: Arc<Context>, _last_frame: Arc<RenderFrame>) -> RenderFrame {
+	pub fn new(context: Arc<Context>, frame: Arc<RenderFrame>) -> RenderFrame {
 		let physics_frame = context.frame_physics();
 
 		// TODO: do something about passing the frame counter on every
@@ -20,7 +24,7 @@ impl RenderFrame {
 		//
 		let rc = context.render();
 
-		let frame_counter = context.counter_render();
+		let frame_counter = frame.frame_counter + 1;
 
 		rc.clear_screen(frame_counter);
 
@@ -55,6 +59,8 @@ impl RenderFrame {
 
 		rc.swap_buffers(frame_counter);
 
-		RenderFrame
+		RenderFrame {
+			frame_counter: frame_counter,
+		}
 	}
 }

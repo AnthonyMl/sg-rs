@@ -61,7 +61,7 @@ impl PhysicsFrame {
 		let camera = Camera::new(player_position, view_direction, context.render().window_size());
 
 		PhysicsFrame {
-			frame_counter: context.counter_physics(),
+			frame_counter: frame.frame_counter + 1,
 			camera: camera,
 			player_position: player_position,
 			view_direction: view_direction,
