@@ -1,4 +1,6 @@
 use std::sync::{Arc};
+use std::f64::consts::{PI};
+use std::f64::{EPSILON};
 
 use cgmath::{Point3, Vector3, Vector2, InnerSpace};
 
@@ -6,43 +8,51 @@ use camera::{Camera};
 use context::{Context};
 
 
+// TODO: put in a soft cap on elevation with a slow drift
+//
 pub struct PhysicsFrame {
-	pub frame_counter: u64,
-	pub camera: Camera,
+	pub frame_counter:   u64,
+	pub camera:          Camera,
 	pub player_position: Point3<f64>,
-	pub view_direction: Vector3<f64>,
+	pub azimuth:         f64,
+	pub elevation:       f64,
 }
 
 impl PhysicsFrame {
 	pub fn frame_zero(window_size: (u32, u32)) -> PhysicsFrame {
 		let player_position = Point3::new(0f64, 1f64, 0f64);
-		let view_direction = Vector3::new(0f64, 0f64, 1f64);
+		let azimuth   = 0f64;
+		let elevation = 0f64;
+		let view_direction = PhysicsFrame::view_direction(azimuth, elevation);
 
 		PhysicsFrame {
-			frame_counter:    0,
-			camera:           Camera::new(player_position, view_direction, window_size),
-			player_position:  player_position,
-			view_direction:   view_direction,
+			frame_counter:   0,
+			camera:          Camera::new(player_position, view_direction, window_size),
+			player_position: player_position,
+			azimuth:         azimuth,
+			elevation:       elevation,
 		}
 	}
 
 	pub fn new(context: Arc<Context>, frame: Arc<PhysicsFrame>) -> PhysicsFrame {
 		let input_frames = context.input().get_input_frames();
 
-		let view_delta: Vector2<f64> = input_frames.iter().fold(
+		let angles_delta: Vector2<f64> = input_frames.iter().fold(
 			Vector2::new(0f64, 0f64),
-			|sum, input_frame| { sum + input_frame.action_state.view_direction }
+			|sum, input_frame| { sum - input_frame.action_state.view_direction }
 		);
-		let right = frame.view_direction.cross(Vector3::new(0f64, 1f64, 0f64)).normalize();
-		let up = right.cross(frame.view_direction).normalize();
-		let view_direction = (frame.view_direction + right * view_delta.x - up * view_delta.y).normalize();
+		let azimuth   = frame.azimuth   + angles_delta.x;
+		let elevation = frame.elevation + angles_delta.y;
+		let elevation = elevation.min(PI - EPSILON).max(EPSILON);
+		let view_direction = PhysicsFrame::view_direction(azimuth, elevation);
+		let right = view_direction.cross(Vector3::new(0f64, 1f64, 0f64)).normalize();
 
 		let input_direction: Vector2<f64> = input_frames.iter().fold(
 			Vector2::new(0f64, 0f64),
 			|sum, input_frame| { sum + input_frame.action_state.movement_direction }
 		);
-		let flat_view_direction = (Vector3 { y: 0f64, .. view_direction}).normalize();
-		let flat_right          = (Vector3 { y: 0f64, ..          right}).normalize();
+		let flat_view_direction = (Vector3 { y: 0f64, .. view_direction }).normalize();
+		let flat_right          = (Vector3 { y: 0f64, ..          right }).normalize();
 
 		// TODO: generalize and factor out all integration
 		//
@@ -61,7 +71,20 @@ impl PhysicsFrame {
 			frame_counter: frame.frame_counter + 1,
 			camera: camera,
 			player_position: player_position,
-			view_direction: view_direction,
+			azimuth: azimuth,
+			elevation: elevation,
 		}
+	}
+
+	fn view_direction(azimuth: f64, elevation: f64) -> Vector3<f64> {
+		Vector3 {
+			x:  elevation.sin() * azimuth.cos(),
+			y: -elevation.cos(),
+			z: -elevation.sin() * azimuth.sin(),
+		}
+	}
+
+	pub fn get_view_direction(&self) -> Vector3<f64> {
+		PhysicsFrame::view_direction(self.azimuth, self.elevation)
 	}
 }
