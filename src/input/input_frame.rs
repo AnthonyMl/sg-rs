@@ -9,7 +9,7 @@ use input::input_event::{InputEvent};
 use context::{Context};
 
 
-#[derive(Clone, Default)] // TODO: remove default
+#[derive(Clone)]
 pub struct InputFrame {
 	pub frame_counter: u64,
 	pub action_state: ActionState,
@@ -17,7 +17,13 @@ pub struct InputFrame {
 }
 
 impl InputFrame {
-	pub fn frame_zero() -> InputFrame { Default::default() }
+	pub fn frame_zero() -> InputFrame {
+		InputFrame {
+			frame_counter:  0,
+			action_state:   Default::default(),
+			keyboard_state: Default::default(),
+		}
+	}
 
 	pub fn new(context: Arc<Context>, frame: Arc<InputFrame>) -> InputFrame {
 		let mut keyboard_state = frame.keyboard_state;
