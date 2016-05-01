@@ -1,4 +1,4 @@
-use cgmath::{Matrix4};
+use cgmath::{Matrix4, Vector3};
 use glium::uniforms::{AsUniformValue, UniformValue};
 
 
@@ -13,5 +13,15 @@ impl AsUniformValue for UMatrix4 {
 			[self.0.z.x as f32, self.0.z.y as f32, self.0.z.z as f32, self.0.z.w as f32],
 			[self.0.w.x as f32, self.0.w.y as f32, self.0.w.z as f32, self.0.w.w as f32],
 		])
+	}
+}
+
+
+#[derive(Clone)]
+pub struct UVector3(pub Vector3<f64>);
+
+impl AsUniformValue for UVector3 {
+	fn as_uniform_value(&self) -> UniformValue {
+		UniformValue::Vec3([self.0.x as f32, self.0.y as f32, self.0.z as f32])
 	}
 }

@@ -57,14 +57,14 @@ impl RenderProcessor {
 
 			out vec4 color;
 
+			uniform vec3 reverse_light_direction;
+
 			void main() {
-				float value = dot(v_normal, vec3(0.707, 0.707, 0.0));
+				float value = dot(v_normal, reverse_light_direction);
 				float intensity = max(0.0, value);
 				color = vec4(intensity, intensity, intensity, 1.0);
-//				color = value > 0.0 ? vec4(0.5, 0.25, 0.125, 1.0) : vec4(0.9, 0.45, 0.45, 1.0);
 			}
 		"#;
-		// TODO: make sure constants are right
 
 		let program = match Program::from_source(&facade, vertex_source, fragment_source, None) {
 			Ok(p) => p,
@@ -151,8 +151,9 @@ impl RenderProcessor {
 				let mut frame = self.frames.get_mut(&$frame_counter).unwrap();
 
 				let uniform_buffer = uniform! {
-					model:                 $uniforms.model,
-					model_view_projection: $uniforms.model_view_projection,
+					model:                   $uniforms.model,
+					model_view_projection:   $uniforms.model_view_projection,
+					reverse_light_direction: $uniforms.reverse_light_direction,
 				};
 
 				frame.draw(
