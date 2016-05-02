@@ -61,7 +61,7 @@ impl RenderProcessor {
 
 			void main() {
 				float value = dot(v_normal, reverse_light_direction);
-				float intensity = max(0.0, value);
+				float intensity = max(0.1, 0.9 * value);
 				color = vec4(intensity, intensity, intensity, 1.0);
 			}
 		"#;
