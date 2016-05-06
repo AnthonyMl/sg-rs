@@ -1,6 +1,5 @@
 use std::thread;
 use std::sync::{Arc};
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use crossbeam::sync::{MsQueue};
 use glium::glutin::{WindowBuilder, CursorState, get_primary_monitor};
@@ -61,16 +60,19 @@ pub fn init() {
 		channel::<()>(),
 	]).into_iter().unzip();
 
-	let mut frame_kicker = FrameKicker::new(senders);
+	let (ready_send, ready_recv): (Vec<Sender<()>>, Vec<Receiver<()>>) = (vec![
+		channel::<()>(),
+		channel::<()>(),
+		channel::<()>(),
+	]).into_iter().unzip();
+
+	for sender in &ready_send { sender.send(()).unwrap(); }
+
+	let mut frame_kicker = FrameKicker::new(senders, ready_recv);
 
 	{
-		let ready_flags = vec![
-			frame_kicker.input  .ready.clone(),
-			frame_kicker.physics.ready.clone(),
-			frame_kicker.render .ready.clone(),
-		];
 		let context = context.clone();
-		thread::spawn(move || { spawn_coroutines(context, receivers, ready_flags); });
+		thread::spawn(move || { spawn_coroutines(context, receivers, ready_send); });
 	}
 
 	// TODO: may need to be refactored to handle system events more frequently/(lower max latency)
@@ -112,18 +114,27 @@ macro_rules! register_contexts {
 		}
 
 		struct KickData {
-			ready:     Arc<AtomicBool>,
-			sender:    Sender<()>,
+			ready:     Receiver<()>, // coro returns its result here
+			sender:    Sender<()>,   // coro waits on recv end
 			last_time: u64,
+		}
+		impl KickData {
+			pub fn try_send(&self) -> Option<()> {
+				if let Ok(_) = self.ready.try_recv() {
+					self.sender.send(()).unwrap();
+					return Some(());
+				}
+				None
+			}
 		}
 		struct FrameKicker { $( pub $name: KickData, )* }
 
 		impl FrameKicker {
-			pub fn new(mut senders: Vec<Sender<()>>) -> FrameKicker {
+			pub fn new(mut senders: Vec<Sender<()>>, mut ready: Vec<Receiver<()>>) -> FrameKicker {
 				let time = time::precise_time_ns() / 1_000_000;
 
 				FrameKicker { $( $name: KickData {
-					ready:     Arc::new(AtomicBool::new(true)),
+					ready:     ready  .pop().unwrap(),
 					sender:    senders.pop().unwrap(),
 					last_time: time,
 				}, )* }
@@ -132,15 +143,16 @@ macro_rules! register_contexts {
 			pub fn tick(&mut self) {
 				let time = time::precise_time_ns() / 1_000_000;
 				$(
-					while self.$name.last_time < time && self.$name.ready.load(Ordering::Relaxed) {
-						self.$name.last_time += 1000 / $frequency;
-						self.$name.sender.send(()).unwrap();
+					while self.$name.last_time < time {
+						if let Some(_) = self.$name.try_send() {
+							self.$name.last_time += 1000 / $frequency;
+						}
 					}
 				)*
 			}
 		}
 
-		pub fn spawn_coroutines(context: Arc<Context>, mut receivers: Vec<Receiver<()>>, mut ready_flags: Vec<Arc<AtomicBool>>) {
+		pub fn spawn_coroutines(context: Arc<Context>, mut receivers: Vec<Receiver<()>>, mut ready_send: Vec<Sender<()>>) {
 			const NUM_THREADS: usize = 4;
 
 			let mut config = Config::new();
@@ -148,7 +160,7 @@ macro_rules! register_contexts {
 			config.set_scheduler(Box::new(BalancingScheduler::new(NUM_THREADS)));
 
 			Mioco::new_configured(config).start(move || { $(
-				fn $fn_frame(context: Arc<Context>, receiver: Receiver<()>, ready_flag: Arc<AtomicBool>) {
+				fn $fn_frame(context: Arc<Context>, receiver: Receiver<()>, ready: Sender<()>) {
 					let mut frame = { context.$name.1.read().unwrap().clone() };
 
 					loop {
@@ -158,15 +170,15 @@ macro_rules! register_contexts {
 
 						{ *(context.$name.1.write().unwrap()) = frame.clone(); }
 
-						ready_flag.store(true, Ordering::Relaxed);
+						ready.send(()).unwrap();
 					}
 				}
 
 				{
-					let context    = context.clone();
-					let receiver   = receivers.pop().unwrap();
-					let ready_flag = ready_flags.pop().unwrap();
-					mioco::spawn(move || { $fn_frame(context, receiver, ready_flag); });
+					let context  = context.clone();
+					let receiver = receivers.pop().unwrap();
+					let ready    = ready_send.pop().unwrap();
+					mioco::spawn(move || { $fn_frame(context, receiver, ready); });
 				}
 			)*}).unwrap();
 		}
