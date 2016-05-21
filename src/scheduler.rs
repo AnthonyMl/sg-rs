@@ -1,7 +1,8 @@
 use std::sync::{Arc};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use mioco::{CoroutineControl, Handler, Scheduler, SchedulerThread};
+use mioco::{Handler};
+use mioco::sched::{Scheduler, SchedulerThread, Coroutine};
 use mioco::mio::{EventLoop};
 
 
@@ -43,12 +44,12 @@ impl Scheduler for BalancingScheduler {
 struct BalancingSchedulerThread {
 	counter:     usize,
 	thread_id:   usize,
-	q:           Vec<CoroutineControl>,
+	q:           Vec<Coroutine>,
 	length_refs: Arc<Vec<AtomicUsize>>,
 }
 
 impl SchedulerThread for BalancingSchedulerThread {
-	fn spawned(&mut self, event_loop: &mut EventLoop<Handler>, coroutine_ctrl: CoroutineControl) {
+	fn spawned(&mut self, event_loop: &mut EventLoop<Handler>, coroutine_ctrl: Coroutine) {
 		let (thread_id, min) = self.length_refs.iter().enumerate().fold(
 			(0, usize::max_value()),
 			|(min_id, min), (thread_id, length)| {
@@ -70,7 +71,7 @@ impl SchedulerThread for BalancingSchedulerThread {
 		else                           { coroutine_ctrl.migrate(event_loop, thread_id); }
 	}
 
-	fn ready(&mut self, event_loop: &mut EventLoop<Handler>, coroutine_ctrl: CoroutineControl) {
+	fn ready(&mut self, event_loop: &mut EventLoop<Handler>, coroutine_ctrl: Coroutine) {
 		if coroutine_ctrl.is_yielding() {
 			self.q.push(coroutine_ctrl);
 			self.length_refs[self.thread_id].fetch_add(1, Ordering::Relaxed);
