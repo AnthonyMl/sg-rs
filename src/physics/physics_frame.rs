@@ -2,10 +2,11 @@ use std::sync::{Arc};
 use std::f64::consts::{PI};
 use std::f64::{EPSILON};
 
-use cgmath::{Point3, Vector3, Vector2, InnerSpace};
+use cgmath::{Point3, Vector3, InnerSpace};
 
 use camera::{Camera};
 use context::{Context};
+use input::{InputFrame};
 
 
 // TODO: put in a soft cap on elevation with a slow drift
@@ -19,7 +20,7 @@ pub struct PhysicsFrame {
 }
 
 impl PhysicsFrame {
-	pub fn frame_zero(window_size: (u32, u32)) -> PhysicsFrame {
+	pub fn frame_zero(aspect_ratio: f64) -> PhysicsFrame {
 		let player_position = Point3::new(0f64, 1f64, 0f64);
 		let azimuth   = 0f64;
 		let elevation = 0f64;
@@ -27,30 +28,24 @@ impl PhysicsFrame {
 
 		PhysicsFrame {
 			frame_counter:   0,
-			camera:          Camera::new(player_position, view_direction, window_size),
+			camera:          Camera::new(player_position, view_direction, aspect_ratio),
 			player_position: player_position,
 			azimuth:         azimuth,
 			elevation:       elevation,
 		}
 	}
 
-	pub fn new(context: Arc<Context>, frame: Arc<PhysicsFrame>) -> PhysicsFrame {
-		let input_frames = context.input().get_input_frames();
+	pub fn new(context: Arc<Context>, frame: Arc<PhysicsFrame>, input_frame: Arc<InputFrame>) -> PhysicsFrame {
+		let angles_delta = -input_frame.action_state.view_direction; // TODO: scale
 
-		let angles_delta: Vector2<f64> = input_frames.iter().fold(
-			Vector2::new(0f64, 0f64),
-			|sum, input_frame| { sum - input_frame.action_state.view_direction }
-		);
 		let azimuth   = frame.azimuth   + angles_delta.x;
 		let elevation = frame.elevation + angles_delta.y;
 		let elevation = elevation.min(PI - EPSILON).max(EPSILON);
 		let view_direction = PhysicsFrame::view_direction(azimuth, elevation);
 		let right = view_direction.cross(Vector3::new(0f64, 1f64, 0f64)).normalize();
 
-		let input_direction: Vector2<f64> = input_frames.iter().fold(
-			Vector2::new(0f64, 0f64),
-			|sum, input_frame| { sum + input_frame.action_state.movement_direction }
-		);
+		let input_direction = input_frame.action_state.movement_direction; // TODO: scale
+
 		let flat_view_direction = (Vector3 { y: 0f64, .. view_direction }).normalize();
 		let flat_right          = (Vector3 { y: 0f64, ..          right }).normalize();
 
@@ -65,7 +60,7 @@ impl PhysicsFrame {
 
 		// TODO: this can be kicked up in a task at the start (if we use last frame's position)
 		//
-		let camera = Camera::new(player_position, view_direction, context.render().window_size());
+		let camera = Camera::new(player_position, view_direction, context.render.aspect_ratio());
 
 		PhysicsFrame {
 			frame_counter: frame.frame_counter + 1,

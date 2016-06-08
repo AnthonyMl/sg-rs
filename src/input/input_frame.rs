@@ -26,9 +26,9 @@ impl InputFrame {
 	}
 
 	pub fn new(context: Arc<Context>, frame: Arc<InputFrame>) -> InputFrame {
-		let mut keyboard_state = frame.keyboard_state;
+		let mut keyboard_state = frame.keyboard_state.clone();
 		let mut mouse_movement = Vector2::new(0f64, 0f64);
-		let ic = context.input();
+		let ic = &context.input;
 
 		while let Some(event) = ic.input_q.try_pop() {
 			match event {
@@ -57,15 +57,13 @@ impl InputFrame {
 		if keyboard_state.right    { direction = direction + RIGHT   }
 		if keyboard_state.left     { direction = direction - RIGHT   }
 
-		let frame = InputFrame {
+		InputFrame {
 			frame_counter: frame.frame_counter + 1,
 			action_state: ActionState {
 				movement_direction: direction,
 				view_direction: mouse_movement,
 			},
 			keyboard_state: keyboard_state,
-		};
-		ic.output_q.push(frame.clone());
-		frame
+		}
 	}
 }

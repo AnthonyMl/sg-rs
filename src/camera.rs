@@ -10,7 +10,7 @@ pub struct Camera {
 }
 
 impl Camera {
-	pub fn new(center: Point3<f64>, view_direction: Vector3<f64>, (width, height): (u32, u32)) -> Camera {
+	pub fn new(center: Point3<f64>, view_direction: Vector3<f64>, aspect_ratio: f64) -> Camera {
 		const FIELD_OF_VIEW: f64 = FRAC_PI_3;
 		const DISTANCE: f64 = 10f64;
 		const CENTER_OFFSET: Vector3<f64> = Vector3{ x: 0f64, y: 5f64, z: 0f64};
@@ -24,7 +24,7 @@ impl Camera {
 
 		let projection = Matrix4::from(PerspectiveFov{
 			fovy: Rad{ s: FIELD_OF_VIEW },
-			aspect: (width as f64) / (height as f64),
+			aspect: aspect_ratio,
 			near: 1f64,
 			far: 100f64,
 		});

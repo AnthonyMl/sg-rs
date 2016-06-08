@@ -1,12 +1,14 @@
+use std::collections::{HashMap};
 use std::thread;
 use std::sync::{Arc};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use crossbeam::sync::{MsQueue};
 use glium::glutin::{WindowBuilder, CursorState, get_primary_monitor};
 use glium::{DisplayBuild};
 use mioco;
 use mioco::{Mioco, Config};
-use mioco::sync::{RwLock};
+use mioco::sync::{Mutex, RwLock};
 use mioco::sync::mpsc::{Receiver, Sender, channel};
 use time;
 
@@ -32,8 +34,12 @@ unsafe impl Send for Context {}
 unsafe impl Sync for Context {}
 
 pub fn init() {
+	const INPUT_FREQUENCY: u64 = 120;
+	const RENDER_FREQUENCY: u64 = 60;
+
 	let window_size = get_primary_monitor().get_dimensions();
-	let window_size = (window_size.0/2, window_size.1/2);
+	let window_size = (window_size.0/2, window_size.1/2); // FIXME: macbook scaling bs
+	let aspect_ratio = (window_size.0 as f64) / (window_size.1 as f64);
 
 	let glium_context = WindowBuilder::new()
 		.with_dimensions(window_size.0, window_size.1)
@@ -46,41 +52,57 @@ pub fn init() {
 
 	let q = Arc::new(MsQueue::new());
 
-	let context = Arc::new(Context::new(
-		InputContext  ::new(),                       InputFrame    ::frame_zero(),
-		PhysicsContext::new(),                       PhysicsFrame  ::frame_zero(window_size),
-		RenderContext ::new(q.clone(), window_size), RenderFrame   ::frame_zero(),)
+	let (render_tokens_sender, render_tokens_receiver) = channel();
+	let context = Arc::new(
+		Context {
+			exit: AtomicBool::new(false),
+			input_senders: MsQueue::new(),
+			last_physics_frame: RwLock::new(Arc::new(PhysicsFrame::frame_zero(aspect_ratio))),
+			render_tokens_length: AtomicUsize::new(0),
+			physics_continuations: Arc::new(Mutex::new(HashMap::new())),
+
+			input:   InputContext  ::new(),
+			physics: PhysicsContext::new(),
+			render:  RenderContext ::new(q.clone(), window_size),
+		}
 	);
-
-	let mut render_processor = RenderProcessor::new(q, glium_context);
-
-	let (senders, receivers) = (vec![
-		channel::<()>(),
-		channel::<()>(),
-		channel::<()>(),
-	]).into_iter().unzip();
-
-	let (ready_send, ready_recv): (Vec<Sender<()>>, Vec<Receiver<()>>) = (vec![
-		channel::<()>(),
-		channel::<()>(),
-		channel::<()>(),
-	]).into_iter().unzip();
-
-	for sender in &ready_send { sender.send(()).unwrap(); }
-
-	let mut frame_kicker = FrameKicker::new(senders, ready_recv);
 
 	{
 		let context = context.clone();
-		thread::spawn(move || { spawn_coroutines(context, receivers, ready_send); });
+		thread::spawn(move || { spawn_coroutines(context, render_tokens_receiver); });
 	}
+
+	let mut render_processor = RenderProcessor::new(q, glium_context);
+	let mut last_input_time = time::precise_time_ns() / 1_000_000;
+	let mut last_render_time = last_input_time;
 
 	// TODO: may need to be refactored to handle system events more frequently/(lower max latency)
 	//
 	while let Some(events) = render_processor.handle_system_events() {
-		context.input().post_input_events(events);
+		if context.exit.load(Ordering::Relaxed) { break }
 
-		frame_kicker.tick();
+		context.input.post_input_events(events);
+
+		let time = time::precise_time_ns() / 1_000_000;
+
+		while last_input_time < time {
+			if let Some(sender) = context.input_senders.try_pop() {
+				sender.send(()).unwrap();
+				last_input_time += 1_000 / INPUT_FREQUENCY;
+			} else {
+				break;
+			}
+		}
+
+		while last_render_time < time {
+			const FIF_RENDER: usize = 1;
+			let length = context.render_tokens_length.load(Ordering::Acquire);
+			if length < FIF_RENDER {
+				context.render_tokens_length.fetch_add(1, Ordering::Release);
+				render_tokens_sender.send(()).unwrap();
+				last_render_time += 1_000 / RENDER_FREQUENCY;
+			}
+		}
 
 		render_processor.handle_render_commands();
 
@@ -88,105 +110,173 @@ pub fn init() {
 	}
 }
 
-macro_rules! register_contexts {
-	($({ $context_type:ty, $frame_type:ident, $name:ident, $fn_frame:ident, $fn_counter:ident, $frequency:expr }),* ) => {
-		pub struct Context {
-			$( $name: (Arc<$context_type>, RwLock<Arc<$frame_type>>), )*
-		}
-
-		impl Context {
-			pub fn new($( $name: $context_type, $fn_frame: $frame_type, )*) -> Context {
-				Context { $( $name: (
-					Arc::new($name),
-					RwLock::new(Arc::new($fn_frame)),
-				), )* }
-			}
-
-			$(
-				#[allow(dead_code)]
-				pub fn $name(&self) -> Arc<$context_type> { self.$name.0.clone() }
-
-				#[allow(dead_code)]
-				pub fn $fn_frame(&self) -> Arc<$frame_type> {
-					(self.$name.1.read().unwrap()).clone()
-				}
-			)*
-		}
-
-		struct KickData {
-			ready:     Receiver<()>, // coro returns its result here
-			sender:    Sender<()>,   // coro waits on recv end
-			last_time: u64,
-		}
-		impl KickData {
-			pub fn try_send(&self) -> Option<()> {
-				if let Ok(_) = self.ready.try_recv() {
-					self.sender.send(()).unwrap();
-					return Some(());
-				}
-				None
-			}
-		}
-		struct FrameKicker { $( pub $name: KickData, )* }
-
-		impl FrameKicker {
-			pub fn new(mut senders: Vec<Sender<()>>, mut ready: Vec<Receiver<()>>) -> FrameKicker {
-				let time = time::precise_time_ns() / 1_000_000;
-
-				FrameKicker { $( $name: KickData {
-					ready:     ready  .pop().unwrap(),
-					sender:    senders.pop().unwrap(),
-					last_time: time,
-				}, )* }
-			}
-
-			pub fn tick(&mut self) {
-				let time = time::precise_time_ns() / 1_000_000;
-				$(
-					while self.$name.last_time < time {
-						if let Some(_) = self.$name.try_send() {
-							self.$name.last_time += 1000 / $frequency;
-						}
-					}
-				)*
-			}
-		}
-
-		pub fn spawn_coroutines(context: Arc<Context>, mut receivers: Vec<Receiver<()>>, mut ready_send: Vec<Sender<()>>) {
-			const NUM_THREADS: usize = 4;
-
-			let mut config = Config::new();
-			config.set_thread_num(NUM_THREADS);
-			config.set_scheduler(Box::new(BalancingScheduler::new(NUM_THREADS)));
-
-			Mioco::new_configured(config).start(move || { $(
-				fn $fn_frame(context: Arc<Context>, receiver: Receiver<()>, ready: Sender<()>) {
-					let mut frame = { context.$name.1.read().unwrap().clone() };
-
-					loop {
-						if receiver.recv().is_err() { mioco::shutdown(); };
-
-						frame = Arc::new($frame_type::new(context.clone(), frame));
-
-						{ *(context.$name.1.write().unwrap()) = frame.clone(); }
-
-						ready.send(()).unwrap();
-					}
-				}
-
-				{
-					let context  = context.clone();
-					let receiver = receivers.pop().unwrap();
-					let ready    = ready_send.pop().unwrap();
-					mioco::spawn(move || { $fn_frame(context, receiver, ready); });
-				}
-			)*}).unwrap();
-		}
-	};
+struct Continuation {
+	id: u64,
+	req_count: AtomicUsize,
+	reqs: MsQueue<Arc<Result>>,
 }
 
-register_contexts!(
-	{ InputContext,   InputFrame,   input,   frame_input,   counter_input,   120 },
-	{ PhysicsContext, PhysicsFrame, physics, frame_physics, counter_physics, 120 },
-	{ RenderContext,  RenderFrame,  render,  frame_render,  counter_render,   60 }
-);
+enum Result { InputFrame(Arc<InputFrame>), PhysicsFrame(Arc<PhysicsFrame>) }
+
+pub struct Context {
+	exit: AtomicBool,
+	input_senders: MsQueue<Sender<()>>,
+	last_physics_frame: RwLock<Arc<PhysicsFrame>>,
+	physics_continuations: Arc<Mutex<HashMap<u64, Arc<Continuation>>>>,
+	render_tokens_length: AtomicUsize,
+
+	pub input: InputContext,
+	pub physics: PhysicsContext,
+	pub render: RenderContext,
+}
+
+impl Context {
+	pub fn input_signal(&self) -> Receiver<()> {
+		let (sender, receiver) = channel();
+		self.input_senders.push(sender);
+		receiver
+	}
+}
+
+fn input_entry(context: Arc<Context>, coroutine: Arc<Continuation>) {
+	let start_signal = context.input_signal();
+	start_signal.recv().unwrap();
+
+	let last_input_frame = {
+		match *coroutine.reqs.pop() {
+			Result::InputFrame(ref data) => data.clone(),
+			_ => unreachable!()
+		}
+	};
+
+	let input_frame = InputFrame::new(context.clone(), last_input_frame);
+	let result = Arc::new(Result::InputFrame(Arc::new(input_frame)));
+
+	{
+		let q = MsQueue::new();
+		q.push(result.clone());
+		let context = context.clone();
+		let continuation = Arc::new(Continuation {
+			id:        coroutine.id + 1,
+			req_count: AtomicUsize::new(0),
+			reqs:      q,
+		});
+		mioco::spawn(move|| input_entry(context, continuation));
+	}
+	{
+		let continuation = {
+			let mut map = context.physics_continuations.lock().unwrap();
+			map.entry(coroutine.id).or_insert(Arc::new(Continuation {
+				id:        coroutine.id,
+				req_count: AtomicUsize::new(2),
+				reqs:      MsQueue::new(),
+			})).clone()
+		};
+		continuation.reqs.push(result.clone());
+		let req_count = continuation.req_count.fetch_sub(1, Ordering::Relaxed);
+		if req_count == 1 {
+			let context = context.clone();
+			let continuation = context.physics_continuations.lock().unwrap().remove(&coroutine.id).unwrap();
+
+			mioco::spawn(move||physics_entry(context, continuation));
+		}
+	}
+}
+
+fn physics_entry(context: Arc<Context>, coroutine: Arc<Continuation>) {
+	let (last_input_frame, last_physics_frame) = {
+		let mut input_frame = Arc::new(InputFrame::frame_zero());
+		let mut physics_frame = Arc::new(PhysicsFrame::frame_zero(context.render.aspect_ratio()));
+
+		for _ in 0..2 {
+			match *coroutine.reqs.pop() {
+				Result::InputFrame(ref data) => input_frame = data.clone(),
+				Result::PhysicsFrame(ref data) => physics_frame = data.clone(),
+			};
+		}
+		(input_frame, physics_frame)
+	};
+
+	let physics_frame = Arc::new(PhysicsFrame::new(context.clone(), last_physics_frame, last_input_frame));
+	let result = Arc::new(Result::PhysicsFrame(physics_frame.clone()));
+
+	{ // TODO: do something better (that doesnt potentially block the sender)
+		let latest_frame = context.last_physics_frame.read().unwrap().clone();
+		if physics_frame.frame_counter > latest_frame.frame_counter {
+			let mut reference = context.last_physics_frame.write().unwrap();
+			*reference = physics_frame.clone();
+		}
+	}
+
+	{
+		let continuation = {
+			let mut map = context.physics_continuations.lock().unwrap();
+			map.entry(coroutine.id + 1).or_insert(Arc::new(Continuation {
+				id:        coroutine.id + 1,
+				req_count: AtomicUsize::new(2),
+				reqs:      MsQueue::new(),
+			})).clone()
+		};
+		continuation.reqs.push(result.clone());
+		let req_count = continuation.req_count.fetch_sub(1, Ordering::Relaxed);
+		if req_count == 1 {
+		let context = context.clone();
+		let continuation = context.physics_continuations.lock().unwrap().remove(&(coroutine.id + 1)).unwrap();
+			mioco::spawn(move||physics_entry(context, continuation));
+		}
+	}
+}
+
+fn render_entry(context: Arc<Context>, render_tokens: Receiver<()>) {
+	while !context.exit.load(Ordering::Relaxed) {
+		render_tokens.recv().unwrap();
+
+		let physics_frame = context.last_physics_frame.read().unwrap().clone();
+
+		// TODO: don't render the same physics_frame twice
+
+		let _render_frame = RenderFrame::new(context.clone(), physics_frame);
+
+		context.render_tokens_length.fetch_sub(1, Ordering::Release);
+	}
+}
+
+fn spawn_coroutines(context: Arc<Context>, render_tokens: Receiver<()>) {
+	const NUM_THREADS: usize = 4;
+
+	let mut config = Config::new();
+	config.set_thread_num(NUM_THREADS);
+	config.set_scheduler(Box::new(BalancingScheduler::new(NUM_THREADS)));
+
+	{
+		let result = Arc::new(Result::PhysicsFrame(Arc::new(PhysicsFrame::frame_zero(context.render.aspect_ratio()))));
+		let q = MsQueue::new();
+		q.push(result);
+			context.physics_continuations.lock().unwrap().insert(1, Arc::new(Continuation {
+			id: 1,
+			req_count: AtomicUsize::new(1),
+			reqs: q,
+		}));
+	}
+
+	Mioco::new_configured(config).start(move|| {
+		{
+			let result = Arc::new(Result::InputFrame(Arc::new(InputFrame::frame_zero())));
+			let q = MsQueue::new();
+			q.push(result);
+			let continuation = Arc::new(Continuation {
+				id:        1,
+				req_count: AtomicUsize::new(0),
+				reqs:      q,
+			});
+			let context = context.clone();
+			mioco::spawn(move||input_entry(context, continuation));
+		}
+		{ // for each render frame in flight
+			let context = context.clone();
+			mioco::spawn(move||render_entry(context, render_tokens));
+		}
+	}).unwrap();
+}
+
+

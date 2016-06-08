@@ -19,8 +19,8 @@ impl RenderContext {
 		}
 	}
 
-	pub fn window_size(&self) -> (u32, u32) {
-		self.window_size
+	pub fn aspect_ratio(&self) -> f64 {
+		(self.window_size.0 as f64) / (self.window_size.1 as f64)
 	}
 
 	// --- Draw Commands --- (candidates for inlining)

@@ -2,31 +2,19 @@ use std::sync::{Arc};
 
 use cgmath::{Matrix4, Vector3, Vector4, SquareMatrix, EuclideanSpace, InnerSpace};
 
+use physics::{PhysicsFrame};
 use render::render_uniforms::{RenderUniforms};
 use render::uniform_wrappers::{UMatrix4, UVector3};
 use context::{Context};
 
 
-pub struct RenderFrame {
-	frame_counter: u64,
-}
+pub struct RenderFrame;
 
 impl RenderFrame {
-	pub fn frame_zero() -> RenderFrame { RenderFrame {
-		frame_counter: 0,
-	}}
+	pub fn new(context: Arc<Context>, physics_frame: Arc<PhysicsFrame>) -> RenderFrame {
+		let frame_counter = physics_frame.frame_counter;
 
-	pub fn new(context: Arc<Context>, frame: Arc<RenderFrame>) -> RenderFrame {
-		let physics_frame = context.frame_physics();
-
-		// TODO: do something about passing the frame counter on every
-		// a guard/builder pattern that sends a command queue to base on drop or something
-		//
-		let rc = context.render();
-
-		let frame_counter = frame.frame_counter + 1;
-
-		rc.clear_screen(frame_counter);
+		context.render.clear_screen(frame_counter);
 
 		let light_direction = Vector3::new(-1f64, -1f64, 0f64).normalize();
 		let reverse_light_direction = light_direction * -1f64;
@@ -35,7 +23,7 @@ impl RenderFrame {
 		let projection = physics_frame.camera.projection.clone();
 		let view_projection = projection * view;
 
-		rc.draw_scene(frame_counter, RenderUniforms {
+		context.render.draw_scene(frame_counter, RenderUniforms {
 			model:                   UMatrix4(Matrix4::identity()),
 			model_view_projection:   UMatrix4(view_projection),
 			reverse_light_direction: UVector3(reverse_light_direction),
@@ -56,16 +44,14 @@ impl RenderFrame {
 		let model = translation * rotation;
 		let model_view_projection = view_projection * model;
 
-		rc.draw_player(frame_counter, RenderUniforms {
+		context.render.draw_player(frame_counter, RenderUniforms {
 			model:                   UMatrix4(model),
 			model_view_projection:   UMatrix4(model_view_projection),
 			reverse_light_direction: UVector3(reverse_light_direction),
 		});
 
-		rc.swap_buffers(frame_counter);
+		context.render.swap_buffers(frame_counter);
 
-		RenderFrame {
-			frame_counter: frame_counter,
-		}
+		RenderFrame
 	}
 }
