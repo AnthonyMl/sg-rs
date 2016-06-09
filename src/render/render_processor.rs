@@ -9,10 +9,11 @@ use glium::glutin::{Event, VirtualKeyCode, ElementState};
 use glium::backend::glutin_backend::{GlutinFacade};
 use glium::draw_parameters::{DepthTest};
 
+use input::{InputEvent};
 use model::{Model};
 use render::render_command::{RenderCommand};
+use render::render_token::{RenderToken};
 use scene::{Scene};
-use input::{InputEvent};
 
 
 // TODO: We can remove clear calls if we clear in the swapbuffers (and replace our old frame objec with a new one)
@@ -185,5 +186,9 @@ impl RenderProcessor {
 				},
 			}
 		}
+	}
+
+	pub fn generate_token(&mut self) -> RenderToken {
+		RenderToken
 	}
 }

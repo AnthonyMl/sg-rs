@@ -12,9 +12,9 @@ use mioco::sync::{Mutex, RwLock};
 use mioco::sync::mpsc::{Receiver, Sender, channel};
 use time;
 
-use render::{RenderContext, RenderProcessor, RenderFrame};
 use input::{InputContext, InputFrame};
 use physics::{PhysicsContext, PhysicsFrame};
+use render::{RenderContext, RenderFrame, RenderProcessor, RenderToken};
 use scheduler::{BalancingScheduler};
 
 
@@ -52,7 +52,7 @@ pub fn init() {
 
 	let q = Arc::new(MsQueue::new());
 
-	let (render_tokens_sender, render_tokens_receiver) = channel();
+	let (render_tokens_sender, render_tokens_receiver) = channel::<RenderToken>();
 	let context = Arc::new(
 		Context {
 			exit: AtomicBool::new(false),
@@ -99,7 +99,7 @@ pub fn init() {
 			let length = context.render_tokens_length.load(Ordering::Acquire);
 			if length < FIF_RENDER {
 				context.render_tokens_length.fetch_add(1, Ordering::Release);
-				render_tokens_sender.send(()).unwrap();
+				render_tokens_sender.send(render_processor.generate_token()).unwrap();
 				last_render_time += 1_000 / RENDER_FREQUENCY;
 			}
 		}
@@ -227,7 +227,7 @@ fn physics_entry(context: Arc<Context>, coroutine: Arc<Continuation>) {
 	}
 }
 
-fn render_entry(context: Arc<Context>, render_tokens: Receiver<()>) {
+fn render_entry(context: Arc<Context>, render_tokens: Receiver<RenderToken>) {
 	while !context.exit.load(Ordering::Relaxed) {
 		render_tokens.recv().unwrap();
 
@@ -241,7 +241,7 @@ fn render_entry(context: Arc<Context>, render_tokens: Receiver<()>) {
 	}
 }
 
-fn spawn_coroutines(context: Arc<Context>, render_tokens: Receiver<()>) {
+fn spawn_coroutines(context: Arc<Context>, render_tokens: Receiver<RenderToken>) {
 	const NUM_THREADS: usize = 4;
 
 	let mut config = Config::new();
