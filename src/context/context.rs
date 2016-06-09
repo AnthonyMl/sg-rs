@@ -99,7 +99,7 @@ pub fn init() {
 			let length = context.render_tokens_length.load(Ordering::Acquire);
 			if length < FIF_RENDER {
 				context.render_tokens_length.fetch_add(1, Ordering::Release);
-				render_tokens_sender.send(render_processor.generate_token()).unwrap();
+				render_tokens_sender.send(RenderToken).unwrap();
 				last_render_time += 1_000 / RENDER_FREQUENCY;
 			}
 		}
@@ -235,7 +235,9 @@ fn render_entry(context: Arc<Context>, render_tokens: Receiver<RenderToken>) {
 
 		// TODO: don't render the same physics_frame twice
 
-		let _render_frame = RenderFrame::new(context.clone(), physics_frame);
+		let render_frame = RenderFrame::new(physics_frame);
+
+		context.render.q.push(render_frame);
 
 		context.render_tokens_length.fetch_sub(1, Ordering::Release);
 	}

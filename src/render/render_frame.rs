@@ -5,17 +5,16 @@ use cgmath::{Matrix4, Vector3, Vector4, SquareMatrix, EuclideanSpace, InnerSpace
 use physics::{PhysicsFrame};
 use render::render_uniforms::{RenderUniforms};
 use render::uniform_wrappers::{UMatrix4, UVector3};
-use context::{Context};
 
 
-pub struct RenderFrame;
+pub struct RenderFrame {
+	pub id: u64,
+	pub scene_uniforms:  RenderUniforms, // TODO: do we need to box the uniforms?
+	pub player_uniforms: RenderUniforms,
+}
 
 impl RenderFrame {
-	pub fn new(context: Arc<Context>, physics_frame: Arc<PhysicsFrame>) -> RenderFrame {
-		let frame_counter = physics_frame.frame_counter;
-
-		context.render.clear_screen(frame_counter);
-
+	pub fn new(physics_frame: Arc<PhysicsFrame>) -> RenderFrame {
 		let light_direction = Vector3::new(-1f64, -1f64, 0f64).normalize();
 		let reverse_light_direction = light_direction * -1f64;
 
@@ -23,11 +22,11 @@ impl RenderFrame {
 		let projection = physics_frame.camera.projection.clone();
 		let view_projection = projection * view;
 
-		context.render.draw_scene(frame_counter, RenderUniforms {
+		let scene_uniforms = RenderUniforms {
 			model:                   UMatrix4(Matrix4::identity()),
 			model_view_projection:   UMatrix4(view_projection),
 			reverse_light_direction: UVector3(reverse_light_direction),
-		});
+		};
 
 		let translation = Matrix4::from_translation(physics_frame.player_position.to_vec());
 
@@ -44,14 +43,16 @@ impl RenderFrame {
 		let model = translation * rotation;
 		let model_view_projection = view_projection * model;
 
-		context.render.draw_player(frame_counter, RenderUniforms {
+		let player_uniforms = RenderUniforms {
 			model:                   UMatrix4(model),
 			model_view_projection:   UMatrix4(model_view_projection),
 			reverse_light_direction: UVector3(reverse_light_direction),
-		});
+		};
 
-		context.render.swap_buffers(frame_counter);
-
-		RenderFrame
+		RenderFrame {
+			id:              physics_frame.frame_counter,
+			scene_uniforms:  scene_uniforms,
+			player_uniforms: player_uniforms,
+		}
 	}
 }

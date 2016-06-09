@@ -1,27 +1,22 @@
 use std::process;
 use std::sync::{Arc};
 use std::path::{Path};
-use std::collections::{HashMap};
 
 use crossbeam::sync::{MsQueue};
-use glium::{Surface, Program, DrawParameters, Depth, Frame};
-use glium::glutin::{Event, VirtualKeyCode, ElementState};
+use glium::{Surface, Program, DrawParameters, Depth};
 use glium::backend::glutin_backend::{GlutinFacade};
 use glium::draw_parameters::{DepthTest};
+use glium::glutin::{Event, VirtualKeyCode, ElementState};
 
 use input::{InputEvent};
 use model::{Model};
-use render::render_command::{RenderCommand};
-use render::render_token::{RenderToken};
+use render::render_frame::{RenderFrame};
 use scene::{Scene};
 
 
-// TODO: We can remove clear calls if we clear in the swapbuffers (and replace our old frame objec with a new one)
-//
 pub struct RenderProcessor {
-	q:               Arc<MsQueue<RenderCommand>>,
+	q:               Arc<MsQueue<RenderFrame>>,
 	facade:          GlutinFacade,
-	frames:          HashMap<u64, Frame>,
 	player:          Model,
 	scene:           Scene,
 	program:         Program,
@@ -29,7 +24,7 @@ pub struct RenderProcessor {
 }
 
 impl RenderProcessor {
-	pub fn new(q: Arc<MsQueue<RenderCommand>>, facade: GlutinFacade) -> RenderProcessor {
+	pub fn new(q: Arc<MsQueue<RenderFrame>>, facade: GlutinFacade) -> RenderProcessor {
 		const PLAYER_PATH_STRING: &'static str = "./data/player.obj";
 		let player = Model::new(&facade, &Path::new(PLAYER_PATH_STRING));
 
@@ -78,7 +73,6 @@ impl RenderProcessor {
 		RenderProcessor {
 			q: q,
 			facade: facade,
-			frames: HashMap::new(),
 			player: player,
 			scene: scene,
 			program: program,
@@ -141,54 +135,45 @@ impl RenderProcessor {
 	}
 
 	pub fn handle_render_commands(&mut self) {
+		while let Some(render_frame) = self.q.try_pop() {
+			let mut frame = self.facade.draw();
 
-		// macro required because we want to pass different models and use mut member variables
-		//
-		macro_rules! draw_model {
-			($model:expr, $frame_counter:expr, $uniforms:expr) => {{
-				// TODO: do something about this terrible syntax
-				// and try to dump the macro
-				//
-				let mut frame = self.frames.get_mut(&$frame_counter).unwrap();
+			frame.clear_color_and_depth((0.125f32, 0.25f32, 0.5f32, 1.0f32), 1.0);
 
+			{
 				let uniform_buffer = uniform! {
-					model:                   $uniforms.model,
-					model_view_projection:   $uniforms.model_view_projection,
-					reverse_light_direction: $uniforms.reverse_light_direction,
+					model:                   render_frame.scene_uniforms.model,
+					model_view_projection:   render_frame.scene_uniforms.model_view_projection,
+					reverse_light_direction: render_frame.scene_uniforms.reverse_light_direction,
 				};
 
 				frame.draw(
-					&$model.vertex_buffer,
-					&$model.index_buffer,
+					&self.scene.model.vertex_buffer,
+					&self.scene.model.index_buffer,
 					&self.program,
 					&uniform_buffer,
-					&self.draw_parameters).unwrap();
-			}}
-		}
-
-		while let Some(job) = self.q.try_pop() {
-			match job {
-				RenderCommand::ClearScreen{ frame_counter } => {
-					let mut frame = self.facade.draw();
-					frame.clear_color_and_depth((0.125f32, 0.25f32, 0.5f32, 1.0f32), 1.0);
-					self.frames.insert(frame_counter, frame);
-				},
-				RenderCommand::SwapBuffers{ frame_counter } => {
-					let mut frame = self.frames.remove(&frame_counter).unwrap();
-
-					frame.set_finish().unwrap();
-				},
-				RenderCommand::DrawScene{ frame_counter, uniforms } => {
-					draw_model!(&self.scene.model, frame_counter, uniforms);
-				},
-				RenderCommand::DrawPlayer{ frame_counter, uniforms } => {
-					draw_model!(&self.player, frame_counter, uniforms);
-				},
+					&self.draw_parameters
+				).unwrap();
 			}
-		}
-	}
+			{
+				let uniform_buffer = uniform! {
+					model:                   render_frame.player_uniforms.model,
+					model_view_projection:   render_frame.player_uniforms.model_view_projection,
+					reverse_light_direction: render_frame.player_uniforms.reverse_light_direction,
+				};
 
-	pub fn generate_token(&mut self) -> RenderToken {
-		RenderToken
+				frame.draw(
+					&self.player.vertex_buffer,
+					&self.player.index_buffer,
+					&self.program,
+					&uniform_buffer,
+					&self.draw_parameters
+				).unwrap();
+			}
+			frame.set_finish().unwrap();
+		}
 	}
 }
+
+
+
