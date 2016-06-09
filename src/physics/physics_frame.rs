@@ -1,6 +1,5 @@
 use std::sync::{Arc};
 use std::f64::consts::{PI};
-use std::f64::{EPSILON};
 
 use cgmath::{Point3, Vector3, InnerSpace};
 
@@ -36,11 +35,12 @@ impl PhysicsFrame {
 	}
 
 	pub fn new(context: Arc<Context>, frame: Arc<PhysicsFrame>, input_frame: Arc<InputFrame>) -> PhysicsFrame {
+		const ELEVATION_LIMIT: f64 = 0.95;
 		let angles_delta = -input_frame.action_state.view_direction; // TODO: scale
 
 		let azimuth   = frame.azimuth   + angles_delta.x;
 		let elevation = frame.elevation + angles_delta.y;
-		let elevation = elevation.min(PI - EPSILON).max(EPSILON);
+		let elevation = elevation.min(PI * ELEVATION_LIMIT).max(PI * (1f64 - ELEVATION_LIMIT));
 		let view_direction = PhysicsFrame::view_direction(azimuth, elevation);
 		let right = view_direction.cross(Vector3::new(0f64, 1f64, 0f64)).normalize();
 
