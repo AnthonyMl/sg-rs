@@ -6,7 +6,7 @@ use cgmath::{Matrix4, Point3, Vector3, PerspectiveFov, Rad, EuclideanSpace, Inne
 #[derive(Clone)]
 pub struct Camera {
 	pub view:       Matrix4<f64>,
-	pub projection: Matrix4<f64>
+	pub projection: Matrix4<f64>,
 }
 
 impl Camera {

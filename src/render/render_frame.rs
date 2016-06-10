@@ -1,6 +1,7 @@
 use std::sync::{Arc};
 
-use cgmath::{Matrix4, Vector3, Vector4, SquareMatrix, EuclideanSpace, InnerSpace};
+use cgmath;
+use cgmath::{Matrix4, Point3, Vector3, Vector4, SquareMatrix, EuclideanSpace, InnerSpace};
 
 use physics::{PhysicsFrame};
 use render::render_uniforms::{RenderUniforms};
@@ -15,14 +16,39 @@ pub struct RenderFrame {
 
 impl RenderFrame {
 	pub fn new(physics_frame: Arc<PhysicsFrame>) -> RenderFrame {
-		let light_direction = Vector3::new(-1f64, -1f64, 0f64).normalize();
+		let light_direction = Vector3::new(1f64, -1f64, -1.5f64).normalize();
 		let reverse_light_direction = light_direction * -1f64;
+
+		let shadow_view_projection = {
+			const SHADOW_WIDTH: f64 = 40f64;
+			const NEAR_PLANE: f64 = 0.001f64;
+
+			let projection = cgmath::ortho(
+				-0.5 * SHADOW_WIDTH,
+				 0.5 * SHADOW_WIDTH,
+				-0.5 * SHADOW_WIDTH,
+				 0.5 * SHADOW_WIDTH,
+				 NEAR_PLANE,
+				 SHADOW_WIDTH
+			);
+
+			let eye = Point3::from_vec(reverse_light_direction * 0.5 * SHADOW_WIDTH);
+
+			let center = Point3::origin();
+
+			let up = Vector3::unit_z();
+			let right = reverse_light_direction.cross(up).normalize();
+			let up = right.cross(reverse_light_direction).normalize();
+
+			projection * Matrix4::look_at(eye, center, up)
+		};
 
 		let view       = physics_frame.camera.view.clone();
 		let projection = physics_frame.camera.projection.clone();
 		let view_projection = projection * view;
 
 		let scene_uniforms = RenderUniforms {
+			shadow:                  UMatrix4(shadow_view_projection),
 			model:                   UMatrix4(Matrix4::identity()),
 			model_view_projection:   UMatrix4(view_projection),
 			reverse_light_direction: UVector3(reverse_light_direction),
@@ -42,8 +68,10 @@ impl RenderFrame {
 
 		let model = translation * rotation;
 		let model_view_projection = view_projection * model;
+		let shadow = shadow_view_projection * model;
 
 		let player_uniforms = RenderUniforms {
+			shadow:                  UMatrix4(shadow),
 			model:                   UMatrix4(model),
 			model_view_projection:   UMatrix4(model_view_projection),
 			reverse_light_direction: UVector3(reverse_light_direction),
