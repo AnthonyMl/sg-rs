@@ -158,9 +158,9 @@ impl RenderProcessor {
 				let uniform_buffer = uniform! {
 					shadow:                  render_frame.scene_uniforms.shadow.clone(),
 					shadow_map:              shadow_map.sampled(),
-					model:                   render_frame.scene_uniforms.model,
+					model:                   render_frame.scene_uniforms.model.clone(),
 					model_view_projection:   render_frame.scene_uniforms.model_view_projection.clone(),
-					reverse_light_direction: render_frame.scene_uniforms.reverse_light_direction,
+					reverse_light_direction: render_frame.scene_uniforms.reverse_light_direction.clone(),
 				};
 				frame.draw(
 					&self.scene.model.vertex_buffer,
@@ -174,9 +174,9 @@ impl RenderProcessor {
 				let uniform_buffer = uniform! {
 					shadow:                  render_frame.player_uniforms.shadow.clone(),
 					shadow_map:              shadow_map.sampled(),
-					model:                   render_frame.player_uniforms.model,
+					model:                   render_frame.player_uniforms.model.clone(),
 					model_view_projection:   render_frame.player_uniforms.model_view_projection.clone(),
-					reverse_light_direction: render_frame.player_uniforms.reverse_light_direction,
+					reverse_light_direction: render_frame.player_uniforms.reverse_light_direction.clone(),
 				};
 				frame.draw(
 					&self.player.vertex_buffer,
@@ -186,7 +186,6 @@ impl RenderProcessor {
 					&self.forward_program.parameters
 				).unwrap();
 			}
-
 			{
 				let s = Matrix4::from_scale(3.0);
 				// TODO: wrap the Matrix4 extraction in a function
@@ -195,9 +194,8 @@ impl RenderProcessor {
 				let matrix = render_frame.player_uniforms.model_view_projection.clone();
 				gnomon::draw(self, &mut frame, matrix.0 * s);
 
-				draw_texture::draw_texture(self, &mut frame, &shadow_map);
+//				draw_texture::draw_texture(self, &mut frame, &shadow_map);
 			}
-
 			frame.set_finish().unwrap();
 		}
 	}

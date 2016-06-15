@@ -24,7 +24,7 @@ impl RenderContext {
 	}
 
 	pub fn light_direction(&self) -> Vector3<f64> {
-		Vector3::new(1.0, -1.0, -1.5).normalize()
+		Vector3::new(1.5, -1.0, -1.0).normalize()
 	}
 }
 

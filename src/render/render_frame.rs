@@ -1,9 +1,9 @@
+use std::f64::{MAX, MIN};
 use std::sync::{Arc};
 
 use cgmath;
-use cgmath::{Matrix4, Point3, Vector3, Vector4, SquareMatrix, EuclideanSpace, InnerSpace};
+use cgmath::{Matrix, Matrix3, Matrix4, Vector3, Vector4, SquareMatrix, EuclideanSpace, InnerSpace};
 
-use camera;
 use context::{Context};
 use physics::{PhysicsFrame};
 use render::render_uniforms::{RenderUniforms};
@@ -18,44 +18,68 @@ pub struct RenderFrame {
 
 impl RenderFrame {
 	pub fn new(context: Arc<Context>, physics_frame: Arc<PhysicsFrame>) -> RenderFrame {
+		// TODO: dont like polling these two
 		let light_direction = context.render.light_direction();
+		let aspect_ratio = context.render.aspect_ratio();
+
 		let reverse_light_direction = light_direction * -1.0;
 
 		let shadow_view_projection = {
-			const SHADOW_NEAR_PLANE: f64 = 0.001;
-			const SHADOW_FAR_PLANE: f64 = 40.0;
+			let corners = physics_frame.camera.view_corners(aspect_ratio);
+			// TODO: this should be constant/held somewhere
+			//
 			let shadow_width = {
-				let aspect_ratio = context.render.aspect_ratio();
-				let y = camera::FAR_PLANE * (0.5 * camera::FIELD_OF_VIEW).tan();
-				let x = y * aspect_ratio;
-				let length = (x * x + y * y + camera::FAR_PLANE * camera::FAR_PLANE).sqrt();
-				let y_near = camera::NEAR_PLANE * (0.5 * camera::FIELD_OF_VIEW).tan();
-				let x_near = y_near * aspect_ratio;
-				let length_near = (x_near * x_near + y_near * y_near + camera::NEAR_PLANE * camera::NEAR_PLANE).sqrt();
-
-				let outside_length = length - length_near;
-				let diagonal_length = (4.0 * (x * x + y * y)).sqrt();
+				let outside_length:  f64 = (corners[4] - corners[1]).magnitude();
+				let diagonal_length: f64 = (corners[1] - corners[0]).magnitude();
 				outside_length.max(diagonal_length)
 			};
 
+			let up = Vector3::unit_y();
+			let right = light_direction.cross(up).normalize();
+			let up = right.cross(light_direction).normalize();
+
+			let rotation_transposed = Matrix3::from_cols(right, up, reverse_light_direction);
+			let rotation = rotation_transposed.transpose();
+
+			let mut min_x = MAX;
+			let mut min_y = MAX;
+			let mut min_z = MAX;
+			let mut max_z = MIN;
+			let transformed_corners: Vec<Vector3<f64>> = corners.iter().map(|&v| rotation * v).collect();
+			for corner in &transformed_corners {
+				if corner.x < min_x { min_x = corner.x }
+				if corner.y < min_y { min_y = corner.y }
+				if corner.z < min_z { min_z = corner.z }
+				if corner.z > max_z { max_z = corner.z }
+			}
+			// TODO: do something correct instead of this
+			//
+			let geometry_corners: Vec<Vector3<f64>> = vec![
+				Vector3::new(-20.0, 0.0, -20.0),
+				Vector3::new( 20.0, 0.0, -20.0),
+				Vector3::new(-20.0, 0.0,  20.0),
+				Vector3::new( 20.0, 0.0,  20.0)
+			].iter().map(|&v| rotation * v).collect();
+			for corner in &geometry_corners {
+				if corner.z > max_z { max_z = corner.z }
+			}
+
 			let projection = cgmath::ortho(
-				-0.5 * shadow_width,
-				 0.5 * shadow_width,
-				-0.5 * shadow_width,
-				 0.5 * shadow_width,
-				SHADOW_NEAR_PLANE,
-				SHADOW_FAR_PLANE
+				min_x,
+				min_x + shadow_width,
+				min_y,
+				min_y + shadow_width,
+				-max_z,
+				-min_z
 			);
 
-			let eye = Point3::from_vec(reverse_light_direction * 0.5 * SHADOW_FAR_PLANE);
-
-			let center = Point3::origin();
-
-			let up = Vector3::unit_z();
-			let right = reverse_light_direction.cross(up).normalize();
-			let up = right.cross(reverse_light_direction).normalize();
-
-			projection * Matrix4::look_at(eye, center, up)
+			let rotation = Matrix4::from_cols(
+				rotation_transposed.x.extend(0.0),
+				rotation_transposed.y.extend(0.0),
+				rotation_transposed.z.extend(0.0),
+				Vector4::new(0.0, 0.0, 0.0, 1.0)
+			).transpose();
+			projection * rotation
 		};
 
 		let view       = physics_frame.camera.view.clone();
