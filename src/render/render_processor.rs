@@ -16,7 +16,7 @@ use render::render_frame::{RenderFrame};
 use scene::{Scene};
 
 
-const DEPTH_DIMENSION: u32 = 1024;
+const DEPTH_DIMENSION: u32 = 2048;
 
 
 pub struct RenderProcessor {
@@ -78,7 +78,6 @@ impl RenderProcessor {
 
 					float value = dot(v_normal, reverse_light_direction);
 					float intensity = shadow * max(0.1, 0.9 * value);
-//					float intensity = shadow;
 					color = vec4(intensity, intensity, intensity, 1.0);
 				}
 			"#;

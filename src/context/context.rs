@@ -235,10 +235,12 @@ fn render_entry(context: Arc<Context>, render_tokens: Receiver<RenderToken>) {
 
 		// TODO: don't render the same physics_frame twice
 
-		let render_frame = RenderFrame::new(physics_frame);
+		let render_frame = {
+			let context = context.clone();
+			RenderFrame::new(context, physics_frame)
+		};
 
 		context.render.q.push(render_frame);
-
 		context.render_tokens_length.fetch_sub(1, Ordering::Release);
 	}
 }

@@ -3,6 +3,8 @@ use std::sync::{Arc};
 use cgmath;
 use cgmath::{Matrix4, Point3, Vector3, Vector4, SquareMatrix, EuclideanSpace, InnerSpace};
 
+use camera;
+use context::{Context};
 use physics::{PhysicsFrame};
 use render::render_uniforms::{RenderUniforms};
 use render::uniform_wrappers::{UMatrix4, UVector3};
@@ -15,24 +17,37 @@ pub struct RenderFrame {
 }
 
 impl RenderFrame {
-	pub fn new(physics_frame: Arc<PhysicsFrame>) -> RenderFrame {
+	pub fn new(context: Arc<Context>, physics_frame: Arc<PhysicsFrame>) -> RenderFrame {
 		let light_direction = Vector3::new(1f64, -1f64, -1.5f64).normalize();
 		let reverse_light_direction = light_direction * -1f64;
 
 		let shadow_view_projection = {
-			const SHADOW_WIDTH: f64 = 40f64;
-			const NEAR_PLANE: f64 = 0.001f64;
+			const SHADOW_NEAR_PLANE: f64 = 0.001;
+			const SHADOW_FAR_PLANE: f64 = 40.0;
+			let shadow_width = {
+				let aspect_ratio = context.render.aspect_ratio();
+				let y = camera::FAR_PLANE * (0.5 * camera::FIELD_OF_VIEW).tan();
+				let x = y * aspect_ratio;
+				let length = (x * x + y * y + camera::FAR_PLANE * camera::FAR_PLANE).sqrt();
+				let y_near = camera::NEAR_PLANE * (0.5 * camera::FIELD_OF_VIEW).tan();
+				let x_near = y_near * aspect_ratio;
+				let length_near = (x_near * x_near + y_near * y_near + camera::NEAR_PLANE * camera::NEAR_PLANE).sqrt();
+
+				let outside_length = length - length_near;
+				let diagonal_length = (4.0 * (x * x + y * y)).sqrt();
+				outside_length.max(diagonal_length)
+			};
 
 			let projection = cgmath::ortho(
-				-0.5 * SHADOW_WIDTH,
-				 0.5 * SHADOW_WIDTH,
-				-0.5 * SHADOW_WIDTH,
-				 0.5 * SHADOW_WIDTH,
-				 NEAR_PLANE,
-				 SHADOW_WIDTH
+				-0.5 * shadow_width,
+				 0.5 * shadow_width,
+				-0.5 * shadow_width,
+				 0.5 * shadow_width,
+				SHADOW_NEAR_PLANE,
+				SHADOW_FAR_PLANE
 			);
 
-			let eye = Point3::from_vec(reverse_light_direction * 0.5 * SHADOW_WIDTH);
+			let eye = Point3::from_vec(reverse_light_direction * 0.5 * SHADOW_FAR_PLANE);
 
 			let center = Point3::origin();
 
