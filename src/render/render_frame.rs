@@ -18,8 +18,8 @@ pub struct RenderFrame {
 
 impl RenderFrame {
 	pub fn new(context: Arc<Context>, physics_frame: Arc<PhysicsFrame>) -> RenderFrame {
-		let light_direction = Vector3::new(1f64, -1f64, -1.5f64).normalize();
-		let reverse_light_direction = light_direction * -1f64;
+		let light_direction = context.render.light_direction();
+		let reverse_light_direction = light_direction * -1.0;
 
 		let shadow_view_projection = {
 			const SHADOW_NEAR_PLANE: f64 = 0.001;

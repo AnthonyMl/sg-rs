@@ -1,17 +1,18 @@
-use std::process;
 use std::sync::{Arc};
 use std::path::{Path};
 
+use cgmath::{Matrix4};
 use crossbeam::sync::{MsQueue};
-use glium::{Surface, Program, DrawParameters, Depth, BackfaceCullingMode};
+use glium::{Surface};
 use glium::backend::glutin_backend::{GlutinFacade};
-use glium::draw_parameters::{DepthTest};
 use glium::framebuffer::{SimpleFrameBuffer};
 use glium::glutin::{Event, VirtualKeyCode, ElementState};
 use glium::texture::{DepthFormat, DepthTexture2d, MipmapsOption, Texture2d};
 
+use debug::gnomon;
 use input::{InputEvent};
 use model::{Model};
+use render::shaders::{FlatColorProgram, ForwardProgram, ShadowProgram};
 use render::render_frame::{RenderFrame};
 use scene::{Scene};
 
@@ -20,14 +21,14 @@ const DEPTH_DIMENSION: u32 = 2048;
 
 
 pub struct RenderProcessor {
-	q:                 Arc<MsQueue<RenderFrame>>,
-	facade:            GlutinFacade,
-	player:            Model,
-	scene:             Scene,
-	program:           Program,
-	draw_parameters:   DrawParameters<'static>,
-	shadow_program:    Program,
-	shadow_parameters: DrawParameters<'static>,
+	pub facade: GlutinFacade,
+	pub flat_color_program: FlatColorProgram,
+
+	q:               Arc<MsQueue<RenderFrame>>,
+	player:          Model,
+	scene:           Scene,
+	forward_program: ForwardProgram,
+	shadow_program:  ShadowProgram,
 }
 
 impl RenderProcessor {
@@ -37,109 +38,18 @@ impl RenderProcessor {
 
 		let scene = Scene::new(&facade);
 
-		let program = {
-			let vertex_source = r#"
-				#version 140
-
-				in vec3 position;
-				in vec3 normal;
-
-				out vec3 v_normal;
-				out vec4 v_shadow_pos;
-
-				uniform mat4 shadow;
-				uniform mat4 model;
-				uniform mat4 model_view_projection;
-
-				void main() {
-					v_normal = normalize((model * vec4(normal, 0.0)).xyz);
-
-					vec4 v4_position = vec4(position, 1.0);
-					v_shadow_pos = shadow                * v4_position;
-					gl_Position  = model_view_projection * v4_position;
-				}
-			"#;
-			let fragment_source = r#"
-				#version 140
-
-				in vec3 v_normal;
-				in vec4 v_shadow_pos;
-
-				out vec4 color;
-
-				uniform vec3 reverse_light_direction;
-
-				uniform sampler2D shadow_map;
-
-				void main() {
-					vec3 shadow_pos = 0.5 + 0.5 * (v_shadow_pos.xyz / v_shadow_pos.w); // TODO: may not be necessary
-					float closest_depth = texture(shadow_map, shadow_pos.xy).r;
-					float shadow = (shadow_pos.z + 0.0005) > closest_depth ? 0.1 : 1.0;
-
-					float value = dot(v_normal, reverse_light_direction);
-					float intensity = shadow * max(0.1, 0.9 * value);
-					color = vec4(intensity, intensity, intensity, 1.0);
-				}
-			"#;
-			match Program::from_source(&facade, vertex_source, fragment_source, None) {
-				Ok(p) => p,
-				Err(e) => {
-					println!("Unable to compile shaders:\n{}", e);
-					process::exit(-3);
-				},
-			}
-		};
-
-		let shadow_program = {
-			let vertex_source = r#"
-				#version 140
-
-				in vec3 position;
-
-				uniform mat4 shadow;
-
-				void main() {
-					gl_Position = shadow * vec4(position, 1.0);
-				}
-			"#;
-			let fragment_source = r#"
-				#version 140
-				void main() { }
-			"#;
-			match Program::from_source(&facade, vertex_source, fragment_source, None) {
-				Ok(program) => program,
-				Err(e) => {
-					println!("Unable to compile shadow shader:\n{}", e);
-					process::exit(-4);
-				},
-			}
-		};
+		let forward_program = ForwardProgram::new(&facade);
+		let flat_color_program = FlatColorProgram::new(&facade);
+		let shadow_program = ShadowProgram::new(&facade);
 
 		RenderProcessor {
 			q: q,
 			facade: facade,
 			player: player,
 			scene: scene,
-			program: program,
-			draw_parameters: DrawParameters {
-				depth: Depth {
-					test: DepthTest::IfLess,
-					write: true,
-					.. Default::default()
-				},
-				.. Default::default()
-			},
+			forward_program: forward_program,
 			shadow_program: shadow_program,
-			shadow_parameters: DrawParameters {
-				depth: Depth {
-					test: DepthTest::IfLess,
-					write: true,
-					.. Default::default()
-				},
-				color_mask: (false, false, false, false),
-				backface_culling: BackfaceCullingMode::CullCounterClockwise,
-				.. Default::default()
-			},
+			flat_color_program: flat_color_program,
 		}
 	}
 
@@ -219,9 +129,9 @@ impl RenderProcessor {
 					frame_buffer.draw(
 						&self.scene.model.vertex_buffer,
 						&self.scene.model.index_buffer,
-						&self.shadow_program,
+						&self.shadow_program.program,
 						&uniform_buffer,
-						&self.shadow_parameters,
+						&self.shadow_program.parameters,
 					).unwrap();
 				}
 				{
@@ -231,9 +141,9 @@ impl RenderProcessor {
 					frame_buffer.draw(
 						&self.player.vertex_buffer,
 						&self.player.index_buffer,
-						&self.shadow_program,
+						&self.shadow_program.program,
 						&uniform_buffer,
-						&self.shadow_parameters,
+						&self.shadow_program.parameters,
 					).unwrap();
 				}
 			}
@@ -245,15 +155,15 @@ impl RenderProcessor {
 					shadow:                  render_frame.scene_uniforms.shadow.clone(),
 					shadow_map:              shadow_map.sampled(),
 					model:                   render_frame.scene_uniforms.model,
-					model_view_projection:   render_frame.scene_uniforms.model_view_projection,
+					model_view_projection:   render_frame.scene_uniforms.model_view_projection.clone(),
 					reverse_light_direction: render_frame.scene_uniforms.reverse_light_direction,
 				};
 				frame.draw(
 					&self.scene.model.vertex_buffer,
 					&self.scene.model.index_buffer,
-					&self.program,
+					&self.forward_program.program,
 					&uniform_buffer,
-					&self.draw_parameters
+					&self.forward_program.parameters
 				).unwrap();
 			}
 			{
@@ -261,21 +171,28 @@ impl RenderProcessor {
 					shadow:                  render_frame.player_uniforms.shadow.clone(),
 					shadow_map:              shadow_map.sampled(),
 					model:                   render_frame.player_uniforms.model,
-					model_view_projection:   render_frame.player_uniforms.model_view_projection,
+					model_view_projection:   render_frame.player_uniforms.model_view_projection.clone(),
 					reverse_light_direction: render_frame.player_uniforms.reverse_light_direction,
 				};
 				frame.draw(
 					&self.player.vertex_buffer,
 					&self.player.index_buffer,
-					&self.program,
+					&self.forward_program.program,
 					&uniform_buffer,
-					&self.draw_parameters
+					&self.forward_program.parameters
 				).unwrap();
 			}
+
+			{
+				let s = Matrix4::from_scale(3.0);
+				// TODO: wrap the Matrix4 extraction in a function
+				let matrix = render_frame.scene_uniforms.model_view_projection.clone();
+				gnomon::draw(self, &mut frame, matrix.0 * s);
+				let matrix = render_frame.player_uniforms.model_view_projection.clone();
+				gnomon::draw(self, &mut frame, matrix.0 * s);
+			}
+
 			frame.set_finish().unwrap();
 		}
 	}
 }
-
-
-

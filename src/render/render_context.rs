@@ -1,5 +1,6 @@
 use std::sync::{Arc};
 
+use cgmath::{InnerSpace, Vector3};
 use crossbeam::sync::{MsQueue};
 
 use render::render_frame::{RenderFrame};
@@ -20,6 +21,10 @@ impl RenderContext {
 
 	pub fn aspect_ratio(&self) -> f64 {
 		(self.window_size.0 as f64) / (self.window_size.1 as f64)
+	}
+
+	pub fn light_direction(&self) -> Vector3<f64> {
+		Vector3::new(1.0, -1.0, -1.5).normalize()
 	}
 }
 

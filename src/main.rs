@@ -17,6 +17,8 @@ mod scene;
 mod action_state;
 mod scheduler;
 
+mod debug;
+
 
 fn main() {
 	context::init();

@@ -6,11 +6,11 @@ use glium::backend::{Facade};
 use tobj;
 use cgmath::{Point3, Vector3, InnerSpace};
 
-use render::{Vertex3};
+use render::vertices::{ForwardVertex};
 
 
 pub struct Model {
-	pub vertex_buffer: VertexBuffer<Vertex3>,
+	pub vertex_buffer: VertexBuffer<ForwardVertex>,
 	pub index_buffer: IndexBuffer<u32>,
 }
 
@@ -35,8 +35,8 @@ impl Model {
 			model.mesh.normals.chunks(3).map(|v| [v[0], v[1], v[2]]).collect()
 		};
 
-		let vertices: Vec<Vertex3> = model.mesh.positions.chunks(3).zip(normals).map(
-			|(v, n)| Vertex3{ position: [v[0], v[1], v[2]], normal: n }
+		let vertices: Vec<ForwardVertex> = model.mesh.positions.chunks(3).zip(normals).map(
+			|(v, n)| ForwardVertex{ position: [v[0], v[1], v[2]], normal: n }
 		).collect();
 
 		Model {
