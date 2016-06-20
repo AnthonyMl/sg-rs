@@ -10,9 +10,10 @@ use glium::glutin::{Event, VirtualKeyCode, ElementState};
 use glium::texture::{DepthFormat, DepthTexture2d, MipmapsOption, Texture2d};
 
 use debug::gnomon;
+use debug::draw_texture;
 use input::{InputEvent};
 use model::{Model};
-use render::shaders::{FlatColorProgram, ForwardProgram, ShadowProgram};
+use render::shaders::{FlatColorProgram, ForwardProgram, ImageProgram, ShadowProgram};
 use render::render_frame::{RenderFrame};
 use scene::{Scene};
 
@@ -23,6 +24,7 @@ const DEPTH_DIMENSION: u32 = 2048;
 pub struct RenderProcessor {
 	pub facade: GlutinFacade,
 	pub flat_color_program: FlatColorProgram,
+	pub image_program: ImageProgram,
 
 	q:               Arc<MsQueue<RenderFrame>>,
 	player:          Model,
@@ -38,8 +40,9 @@ impl RenderProcessor {
 
 		let scene = Scene::new(&facade);
 
-		let forward_program = ForwardProgram::new(&facade);
 		let flat_color_program = FlatColorProgram::new(&facade);
+		let forward_program = ForwardProgram::new(&facade);
+		let image_program = ImageProgram::new(&facade);
 		let shadow_program = ShadowProgram::new(&facade);
 
 		RenderProcessor {
@@ -50,6 +53,7 @@ impl RenderProcessor {
 			forward_program: forward_program,
 			shadow_program: shadow_program,
 			flat_color_program: flat_color_program,
+			image_program: image_program,
 		}
 	}
 
@@ -190,6 +194,8 @@ impl RenderProcessor {
 				gnomon::draw(self, &mut frame, matrix.0 * s);
 				let matrix = render_frame.player_uniforms.model_view_projection.clone();
 				gnomon::draw(self, &mut frame, matrix.0 * s);
+
+				draw_texture::draw_texture(self, &mut frame, &shadow_map);
 			}
 
 			frame.set_finish().unwrap();
