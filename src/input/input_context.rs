@@ -12,8 +12,8 @@ pub struct InputContext {
 impl InputContext {
 	pub fn new() -> InputContext {
 		InputContext {
-			input_q:    MsQueue::new(),
-			input_map:  InputMap{},
+			input_q:   MsQueue::new(),
+			input_map: InputMap{},
 		}
 	}
 

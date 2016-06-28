@@ -5,6 +5,7 @@ use glium::texture::{DepthTexture2d};
 use render::render_processor::{RenderProcessor};
 
 
+#[allow(dead_code)]
 pub fn draw_texture<S: Surface>(processor: &RenderProcessor, surface: &mut S, texture: &DepthTexture2d) {
 	#[derive(Copy, Clone)]
 	struct ImageVertex {

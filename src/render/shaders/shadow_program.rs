@@ -37,7 +37,7 @@ impl ShadowProgram {
 					.. Default::default()
 				},
 				color_mask: (false, false, false, false),
-				backface_culling: BackfaceCullingMode::CullCounterClockwise,
+				backface_culling: BackfaceCullingMode::CullClockwise,
 				.. Default::default()
 			},
 		}

@@ -1,4 +1,4 @@
-use glium::{Depth, DepthTest, DrawParameters, Program};
+use glium::{BackfaceCullingMode, Depth, DepthTest, DrawParameters, Program};
 use glium::backend::{Facade};
 
 
@@ -46,7 +46,7 @@ impl ForwardProgram {
 				void main() {
 					vec3 shadow_pos = 0.5 + 0.5 * (v_shadow_pos.xyz / v_shadow_pos.w); // TODO: may not be necessary
 					float closest_depth = texture(shadow_map, shadow_pos.xy).r;
-					float shadow = (shadow_pos.z + 0.0005) > closest_depth ? 0.1 : 1.0;
+					float shadow = (shadow_pos.z - 0.0005) > closest_depth ? 0.1 : 1.0;
 
 					float value = dot(v_normal, reverse_light_direction);
 					float intensity = shadow * max(0.1, 0.9 * value);
@@ -64,6 +64,7 @@ impl ForwardProgram {
 					write: true,
 					.. Default::default()
 				},
+				backface_culling: BackfaceCullingMode::CullClockwise,
 				.. Default::default()
 			},
 		}

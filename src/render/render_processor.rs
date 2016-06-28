@@ -10,7 +10,6 @@ use glium::glutin::{Event, VirtualKeyCode, ElementState};
 use glium::texture::{DepthFormat, DepthTexture2d, MipmapsOption, Texture2d};
 
 use debug::gnomon;
-use debug::draw_texture;
 use input::{InputEvent};
 use model::{Model};
 use render::shaders::{FlatColorProgram, ForwardProgram, ImageProgram, ShadowProgram};
@@ -191,8 +190,6 @@ impl RenderProcessor {
 				gnomon::draw(self, &mut frame, matrix.0 * s);
 				let matrix = render_frame.player_uniforms.model_view_projection.clone();
 				gnomon::draw(self, &mut frame, matrix.0 * s);
-
-//				draw_texture::draw_texture(self, &mut frame, &shadow_map);
 			}
 			frame.set_finish().unwrap();
 		}
