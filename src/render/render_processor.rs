@@ -14,11 +14,9 @@ use debug::draw_texture;
 use input::{InputEvent};
 use model::{Model};
 use render::shaders::{FlatColorProgram, ForwardProgram, ImageProgram, ShadowProgram};
+use render::render_context::{DEPTH_DIMENSION};
 use render::render_frame::{RenderFrame};
 use scene::{Scene};
-
-
-const DEPTH_DIMENSION: u32 = 2048;
 
 
 pub struct RenderProcessor {

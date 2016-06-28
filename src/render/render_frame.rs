@@ -6,6 +6,7 @@ use cgmath::{Matrix, Matrix3, Matrix4, Vector3, Vector4, SquareMatrix, Euclidean
 
 use context::{Context};
 use physics::{PhysicsFrame};
+use render::render_context::{DEPTH_DIMENSION};
 use render::render_uniforms::{RenderUniforms};
 use render::uniform_wrappers::{UMatrix4, UVector3};
 
@@ -63,6 +64,10 @@ impl RenderFrame {
 			for corner in &geometry_corners {
 				if corner.z > max_z { max_z = corner.z }
 			}
+
+			let world_units_per_texel = shadow_width / (DEPTH_DIMENSION as f64);
+			min_x = (min_x / world_units_per_texel).floor() * world_units_per_texel;
+			min_y = (min_y / world_units_per_texel).floor() * world_units_per_texel;
 
 			let projection = cgmath::ortho(
 				min_x,

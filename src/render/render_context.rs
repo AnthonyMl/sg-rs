@@ -6,6 +6,8 @@ use crossbeam::sync::{MsQueue};
 use render::render_frame::{RenderFrame};
 
 
+pub const DEPTH_DIMENSION: u32 = 2048;
+
 pub struct RenderContext {
 	pub q: Arc<MsQueue<RenderFrame>>, // TODO: make private and provide minimal decent api
 	window_size: (u32, u32), // TODO: maybe this should be a per RenderFrame parameter
