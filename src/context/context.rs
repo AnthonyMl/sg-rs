@@ -1,8 +1,9 @@
 use std::collections::{HashMap};
 use std::mem;
-use std::thread;
+use std::ptr;
 use std::sync::{Arc};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::thread;
 
 use crossbeam::sync::{MsQueue};
 use glium::glutin::{WindowBuilder, CursorState, get_primary_monitor};
@@ -189,12 +190,12 @@ fn input_entry(context: Arc<Context>, coroutine: Arc<Continuation>) {
 
 fn physics_entry(context: Arc<Context>, coroutine: Arc<Continuation>) {
 	let (last_input_frame, last_physics_frame) = unsafe {
-		let mut input_frame   = mem::uninitialized();
-		let mut physics_frame = mem::uninitialized();
+		let mut input_frame:   Arc<InputFrame>   = mem::uninitialized();
+		let mut physics_frame: Arc<PhysicsFrame> = mem::uninitialized();
 		for _ in 0..2 {
 			match *coroutine.reqs.pop() {
-				Result::InputFrame(ref data) => input_frame = data.clone(),
-				Result::PhysicsFrame(ref data) => physics_frame = data.clone(),
+				Result::InputFrame(  ref data) => ptr::write(&mut input_frame,   data.clone()),
+				Result::PhysicsFrame(ref data) => ptr::write(&mut physics_frame, data.clone()),
 			};
 		}
 		(input_frame, physics_frame)
