@@ -251,6 +251,7 @@ fn spawn_coroutines(context: Arc<Context>, render_tokens: Receiver<RenderToken>)
 	let mut config = Config::new();
 	config.set_thread_num(NUM_THREADS);
 	config.set_scheduler(Box::new(BalancingScheduler::new(NUM_THREADS)));
+	config.set_catch_panics(false);
 
 	{
 		let result = Arc::new(Result::PhysicsFrame(Arc::new(PhysicsFrame::frame_zero(context.render.aspect_ratio()))));
