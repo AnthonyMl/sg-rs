@@ -9,8 +9,9 @@ pub const FIELD_OF_VIEW: f64 = FRAC_PI_3;
 
 #[derive(Clone)]
 pub struct Camera {
-	pub view:       Matrix4<f64>,
-	pub projection: Matrix4<f64>,
+	pub view:         Matrix4<f64>,
+	pub projection:   Matrix4<f64>,
+	pub aspect_ratio: f64,
 }
 
 impl Camera {
@@ -35,10 +36,11 @@ impl Camera {
 		Camera {
 			view: view,
 			projection: projection,
+			aspect_ratio: aspect_ratio,
 		}
 	}
 
-	pub fn view_corners(&self, aspect_ratio: f64) -> Vec<Vector3<f64>> {
+	pub fn view_corners(&self) -> Vec<Vector3<f64>> {
 		let view = self.view.transpose();
 		let view_origin = (view * self.view.w.clone()).truncate() * -1.0;
 		let right = view.x.truncate();
@@ -59,7 +61,7 @@ impl Camera {
 			let vertical_length = v.2 * tan;
 
 			view_origin
-			+ right * (v.0 * vertical_length * aspect_ratio)
+			+ right * (v.0 * vertical_length * self.aspect_ratio)
 			+ up    * (v.1 * vertical_length)
 			+ look  *  v.2
 		}).collect()

@@ -18,15 +18,12 @@ pub struct RenderFrame {
 }
 
 impl RenderFrame {
-	pub fn new(context: Arc<Context>, physics_frame: Arc<PhysicsFrame>) -> RenderFrame {
-		// TODO: dont like polling these two
-		let light_direction = context.render.light_direction();
-		let aspect_ratio = context.render.aspect_ratio();
-
+	pub fn new(_context: Arc<Context>, physics_frame: Arc<PhysicsFrame>) -> RenderFrame {
+		let light_direction = physics_frame.light_direction;
 		let reverse_light_direction = light_direction * -1.0;
 
 		let shadow_view_projection = {
-			let corners = physics_frame.camera.view_corners(aspect_ratio);
+			let corners = physics_frame.camera.view_corners();
 
 			// TODO: this should be constant/held somewhere
 			//
