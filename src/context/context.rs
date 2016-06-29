@@ -1,4 +1,5 @@
 use std::collections::{HashMap};
+use std::mem;
 use std::thread;
 use std::sync::{Arc};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -53,11 +54,14 @@ pub fn init() {
 	let q = Arc::new(MsQueue::new());
 
 	let (render_tokens_sender, render_tokens_receiver) = channel::<RenderToken>();
+
+	let physics_zero = RwLock::new(Arc::new(PhysicsFrame::frame_zero(aspect_ratio)));
+
 	let context = Arc::new(
 		Context {
 			exit: AtomicBool::new(false),
 			input_senders: MsQueue::new(),
-			last_physics_frame: RwLock::new(Arc::new(PhysicsFrame::frame_zero(aspect_ratio))),
+			last_physics_frame: physics_zero,
 			render_tokens_length: AtomicUsize::new(0),
 			physics_continuations: Arc::new(Mutex::new(HashMap::new())),
 
@@ -184,10 +188,9 @@ fn input_entry(context: Arc<Context>, coroutine: Arc<Continuation>) {
 }
 
 fn physics_entry(context: Arc<Context>, coroutine: Arc<Continuation>) {
-	let (last_input_frame, last_physics_frame) = {
-		let mut input_frame = Arc::new(InputFrame::frame_zero());
-		let mut physics_frame = Arc::new(PhysicsFrame::frame_zero(context.render.aspect_ratio()));
-
+	let (last_input_frame, last_physics_frame) = unsafe {
+		let mut input_frame   = mem::uninitialized();
+		let mut physics_frame = mem::uninitialized();
 		for _ in 0..2 {
 			match *coroutine.reqs.pop() {
 				Result::InputFrame(ref data) => input_frame = data.clone(),
@@ -254,7 +257,8 @@ fn spawn_coroutines(context: Arc<Context>, render_tokens: Receiver<RenderToken>)
 	config.set_catch_panics(false);
 
 	{
-		let result = Arc::new(Result::PhysicsFrame(Arc::new(PhysicsFrame::frame_zero(context.render.aspect_ratio()))));
+		let arc_physics_zero = context.last_physics_frame.read().unwrap().clone();
+		let result = Arc::new(Result::PhysicsFrame(arc_physics_zero));
 		let q = MsQueue::new();
 		q.push(result);
 			context.physics_continuations.lock().unwrap().insert(1, Arc::new(Continuation {
