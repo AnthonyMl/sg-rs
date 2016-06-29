@@ -27,6 +27,7 @@ impl RenderFrame {
 
 		let shadow_view_projection = {
 			let corners = physics_frame.camera.view_corners(aspect_ratio);
+
 			// TODO: this should be constant/held somewhere
 			//
 			let shadow_width = {
@@ -42,26 +43,29 @@ impl RenderFrame {
 			let rotation_transposed = Matrix3::from_cols(right, up, reverse_light_direction);
 			let rotation = rotation_transposed.transpose();
 
+			// TODO: do something correct instead of this
+			//
+			let geometry_corners: Vec<Vector3<f64>> = vec![
+				Vector3::new(-20.0,  0.0, -20.0),
+				Vector3::new( 20.0,  0.0, -20.0),
+				Vector3::new(-20.0,  0.0,  20.0),
+				Vector3::new( 20.0,  0.0,  20.0),
+				Vector3::new(-20.0, 10.0, -20.0),
+				Vector3::new( 20.0, 10.0, -20.0),
+				Vector3::new(-20.0, 10.0,  20.0),
+				Vector3::new( 20.0, 10.0,  20.0)
+			];
+			let corners = corners.iter().chain(geometry_corners.iter());
+			let transformed_corners = corners.map(|&v| rotation * v);
+
 			let mut min_x = MAX;
 			let mut min_y = MAX;
 			let mut min_z = MAX;
 			let mut max_z = MIN;
-			let transformed_corners: Vec<Vector3<f64>> = corners.iter().map(|&v| rotation * v).collect();
-			for corner in &transformed_corners {
+			for corner in transformed_corners {
 				if corner.x < min_x { min_x = corner.x }
 				if corner.y < min_y { min_y = corner.y }
 				if corner.z < min_z { min_z = corner.z }
-				if corner.z > max_z { max_z = corner.z }
-			}
-			// TODO: do something correct instead of this
-			//
-			let geometry_corners: Vec<Vector3<f64>> = vec![
-				Vector3::new(-20.0, 0.0, -20.0),
-				Vector3::new( 20.0, 0.0, -20.0),
-				Vector3::new(-20.0, 0.0,  20.0),
-				Vector3::new( 20.0, 0.0,  20.0)
-			].iter().map(|&v| rotation * v).collect();
-			for corner in &geometry_corners {
 				if corner.z > max_z { max_z = corner.z }
 			}
 
