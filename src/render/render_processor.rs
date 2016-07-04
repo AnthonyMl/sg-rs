@@ -29,6 +29,7 @@ pub struct RenderProcessor {
 	forward_program: ForwardProgram,
 	shadow_program:  ShadowProgram,
 	shadow_texture:  DepthTexture2d,
+	shadow_color:    Texture2d,
 }
 
 impl RenderProcessor {
@@ -50,6 +51,7 @@ impl RenderProcessor {
 			DEPTH_DIMENSION,
 			DEPTH_DIMENSION
 		).unwrap(); // TODO: handle error instead
+		let shadow_color = Texture2d::empty(&facade, DEPTH_DIMENSION, DEPTH_DIMENSION).unwrap();
 
 		RenderProcessor {
 			q: q,
@@ -61,6 +63,7 @@ impl RenderProcessor {
 			flat_color_program: flat_color_program,
 			image_program: image_program,
 			shadow_texture: shadow_texture,
+			shadow_color: shadow_color,
 		}
 	}
 
@@ -114,16 +117,9 @@ impl RenderProcessor {
 	pub fn handle_render_commands(&mut self) {
 		while let Some(render_frame) = self.q.try_pop() {
 			{
-				let color = Texture2d::empty(
-					&self.facade,
-					DEPTH_DIMENSION, // TODO: can we use 0/1
-					DEPTH_DIMENSION,
-				).unwrap();
-
-				let mut frame_buffer = SimpleFrameBuffer::with_depth_buffer(&self.facade, &color, &self.shadow_texture).unwrap();
+				let mut frame_buffer = SimpleFrameBuffer::with_depth_buffer(&self.facade, &self.shadow_color, &self.shadow_texture).unwrap();
 
 				frame_buffer.clear_depth(1.0);
-
 				{
 					let uniform_buffer = uniform! {
 						// TODO: doesn't seem like the right place(thread) for these clones
