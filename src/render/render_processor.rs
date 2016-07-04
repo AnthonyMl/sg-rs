@@ -28,6 +28,7 @@ pub struct RenderProcessor {
 	scene:           Scene,
 	forward_program: ForwardProgram,
 	shadow_program:  ShadowProgram,
+	shadow_texture:  DepthTexture2d,
 }
 
 impl RenderProcessor {
@@ -42,6 +43,14 @@ impl RenderProcessor {
 		let image_program = ImageProgram::new(&facade);
 		let shadow_program = ShadowProgram::new(&facade);
 
+		let shadow_texture = DepthTexture2d::empty_with_format(
+			&facade,
+			DepthFormat::I24,
+			MipmapsOption::NoMipmap,
+			DEPTH_DIMENSION,
+			DEPTH_DIMENSION
+		).unwrap(); // TODO: handle error instead
+
 		RenderProcessor {
 			q: q,
 			facade: facade,
@@ -51,6 +60,7 @@ impl RenderProcessor {
 			shadow_program: shadow_program,
 			flat_color_program: flat_color_program,
 			image_program: image_program,
+			shadow_texture: shadow_texture,
 		}
 	}
 
@@ -103,14 +113,6 @@ impl RenderProcessor {
 
 	pub fn handle_render_commands(&mut self) {
 		while let Some(render_frame) = self.q.try_pop() {
-			let shadow_map = DepthTexture2d::empty_with_format(
-				&self.facade,
-				DepthFormat::I24,
-				MipmapsOption::NoMipmap,
-				DEPTH_DIMENSION,
-				DEPTH_DIMENSION
-			).unwrap(); // TODO: handle error instead
-
 			{
 				let color = Texture2d::empty(
 					&self.facade,
@@ -118,7 +120,7 @@ impl RenderProcessor {
 					DEPTH_DIMENSION,
 				).unwrap();
 
-				let mut frame_buffer = SimpleFrameBuffer::with_depth_buffer(&self.facade, &color, &shadow_map).unwrap();
+				let mut frame_buffer = SimpleFrameBuffer::with_depth_buffer(&self.facade, &color, &self.shadow_texture).unwrap();
 
 				frame_buffer.clear_depth(1.0);
 
@@ -154,7 +156,7 @@ impl RenderProcessor {
 			{
 				let uniform_buffer = uniform! {
 					shadow:                  render_frame.scene_uniforms.shadow.clone(),
-					shadow_map:              shadow_map.sampled(),
+					shadow_map:              self.shadow_texture.sampled(),
 					model:                   render_frame.scene_uniforms.model.clone(),
 					model_view_projection:   render_frame.scene_uniforms.model_view_projection.clone(),
 					reverse_light_direction: render_frame.scene_uniforms.reverse_light_direction.clone(),
@@ -170,7 +172,7 @@ impl RenderProcessor {
 			{
 				let uniform_buffer = uniform! {
 					shadow:                  render_frame.player_uniforms.shadow.clone(),
-					shadow_map:              shadow_map.sampled(),
+					shadow_map:              self.shadow_texture.sampled(),
 					model:                   render_frame.player_uniforms.model.clone(),
 					model_view_projection:   render_frame.player_uniforms.model_view_projection.clone(),
 					reverse_light_direction: render_frame.player_uniforms.reverse_light_direction.clone(),
