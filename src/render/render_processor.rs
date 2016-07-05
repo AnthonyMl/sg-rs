@@ -11,10 +11,12 @@ use glium::texture::{DepthFormat, DepthTexture2d, MipmapsOption, Texture2d};
 
 use debug::gnomon;
 use input::{InputEvent};
+use inverse_kinematics::{Chain, Axis};
 use model::{Model};
 use render::shaders::{FlatColorProgram, ForwardProgram, ImageProgram, ShadowProgram};
 use render::render_context::{DEPTH_DIMENSION};
 use render::render_frame::{RenderFrame};
+use render::uniform_wrappers::{UMatrix4};
 use scene::{Scene};
 
 
@@ -30,6 +32,7 @@ pub struct RenderProcessor {
 	shadow_program:  ShadowProgram,
 	shadow_texture:  DepthTexture2d,
 	shadow_color:    Texture2d,
+	ik_chain:        Chain,
 }
 
 impl RenderProcessor {
@@ -53,6 +56,13 @@ impl RenderProcessor {
 		).unwrap(); // TODO: handle error instead
 		let shadow_color = Texture2d::empty(&facade, DEPTH_DIMENSION, DEPTH_DIMENSION).unwrap();
 
+		let ik_chain = Chain::new(&facade, &[
+			(0.0, Axis::Y),
+			(3.0, Axis::Z),
+			(3.0, Axis::Z),
+			(3.0, Axis::Z)
+		]);
+
 		RenderProcessor {
 			q: q,
 			facade: facade,
@@ -64,6 +74,7 @@ impl RenderProcessor {
 			image_program: image_program,
 			shadow_texture: shadow_texture,
 			shadow_color: shadow_color,
+			ik_chain: ik_chain,
 		}
 	}
 
@@ -145,6 +156,25 @@ impl RenderProcessor {
 						&self.shadow_program.parameters,
 					).unwrap();
 				}
+				// TODO: do not do all this work here
+				//
+				{
+					let transforms = self.ik_chain.joint_transforms();
+					for joint in &transforms {
+						let vp = render_frame.scene_uniforms.shadow.clone();
+
+						let uniform_buffer = uniform! {
+							shadow: UMatrix4(vp.0 * joint),
+						};
+						frame_buffer.draw(
+							&self.ik_chain.model.vertex_buffer,
+							&self.ik_chain.model.index_buffer,
+							&self.shadow_program.program,
+							&uniform_buffer,
+							&self.shadow_program.parameters
+						).unwrap();
+					}
+				}
 			}
 
 			let mut frame = self.facade.draw();
@@ -180,6 +210,30 @@ impl RenderProcessor {
 					&uniform_buffer,
 					&self.forward_program.parameters
 				).unwrap();
+			}
+			{
+				// TODO: do not do all this work here
+				//
+				let transforms = self.ik_chain.joint_transforms();
+				for joint in transforms {
+					let vp = render_frame.scene_uniforms.model_view_projection.clone();
+					let shadow = render_frame.scene_uniforms.shadow.clone();
+
+					let uniform_buffer = uniform! {
+						shadow:                  UMatrix4(shadow.0 * joint),
+						shadow_map:              self.shadow_texture.sampled(),
+						model:                   UMatrix4(joint),
+						model_view_projection:   UMatrix4(vp.0 * joint),
+						reverse_light_direction: render_frame.scene_uniforms.reverse_light_direction.clone(),
+					};
+					frame.draw(
+						&self.ik_chain.model.vertex_buffer,
+						&self.ik_chain.model.index_buffer,
+						&self.forward_program.program,
+						&uniform_buffer,
+						&self.forward_program.parameters
+					).unwrap();
+				}
 			}
 			{
 				let s = Matrix4::from_scale(3.0);

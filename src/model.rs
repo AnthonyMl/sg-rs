@@ -1,10 +1,10 @@
 use std::path::{Path};
 
+use cgmath::{InnerSpace, Point3, Vector3};
 use glium::{VertexBuffer, IndexBuffer};
-use glium::index::{PrimitiveType};
 use glium::backend::{Facade};
+use glium::index::{PrimitiveType};
 use tobj;
-use cgmath::{Point3, Vector3, InnerSpace};
 
 use render::vertices::{ForwardVertex};
 
@@ -15,7 +15,7 @@ pub struct Model {
 }
 
 impl Model {
-	pub fn new<T: Facade>(facade: &T, path: &Path) -> Model {
+	pub fn new<F: Facade>(facade: &F, path: &Path) -> Model {
 		let error_message = &format!("Unable to load Model({})", path.to_str().unwrap());
 
 		let model: tobj::Model = tobj::load_obj(path).expect(error_message).0.pop().expect(error_message);
