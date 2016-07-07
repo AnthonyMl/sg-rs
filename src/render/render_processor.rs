@@ -1,7 +1,5 @@
 use std::sync::{Arc};
-use std::path::{Path};
 
-use cgmath::{Matrix4};
 use crossbeam::sync::{MsQueue};
 use glium::{Surface};
 use glium::backend::glutin_backend::{GlutinFacade};
@@ -9,40 +7,27 @@ use glium::framebuffer::{SimpleFrameBuffer};
 use glium::glutin::{Event, VirtualKeyCode, ElementState};
 use glium::texture::{DepthFormat, DepthTexture2d, MipmapsOption, Texture2d};
 
-use debug::gnomon;
 use input::{InputEvent};
-use inverse_kinematics::{Chain, Axis};
-use model::{Model};
-use render::shaders::{FlatColorProgram, ForwardProgram, ImageProgram, ShadowProgram};
+use render::shaders::{UnlitProgram, ForwardProgram, ImageProgram, ShadowProgram};
 use render::render_context::{DEPTH_DIMENSION};
 use render::render_frame::{RenderFrame};
-use render::uniform_wrappers::{UMatrix4};
-use scene::{Scene};
 
 
 pub struct RenderProcessor {
 	pub facade: GlutinFacade,
-	pub flat_color_program: FlatColorProgram,
+	pub unlit_program: UnlitProgram,
 	pub image_program: ImageProgram,
 
 	q:               Arc<MsQueue<RenderFrame>>,
-	player:          Model,
-	scene:           Scene,
 	forward_program: ForwardProgram,
 	shadow_program:  ShadowProgram,
 	shadow_texture:  DepthTexture2d,
 	shadow_color:    Texture2d,
-	ik_chain:        Chain,
 }
 
 impl RenderProcessor {
 	pub fn new(q: Arc<MsQueue<RenderFrame>>, facade: GlutinFacade) -> RenderProcessor {
-		const PLAYER_PATH_STRING: &'static str = "./data/player.obj";
-		let player = Model::new(&facade, &Path::new(PLAYER_PATH_STRING));
-
-		let scene = Scene::new(&facade);
-
-		let flat_color_program = FlatColorProgram::new(&facade);
+		let unlit_program = UnlitProgram::new(&facade);
 		let forward_program = ForwardProgram::new(&facade);
 		let image_program = ImageProgram::new(&facade);
 		let shadow_program = ShadowProgram::new(&facade);
@@ -56,25 +41,15 @@ impl RenderProcessor {
 		).unwrap(); // TODO: handle error instead
 		let shadow_color = Texture2d::empty(&facade, DEPTH_DIMENSION, DEPTH_DIMENSION).unwrap();
 
-		let ik_chain = Chain::new(&facade, &[
-			(0.0, Axis::Y),
-			(3.0, Axis::Z),
-			(3.0, Axis::Z),
-			(3.0, Axis::Z)
-		]);
-
 		RenderProcessor {
 			q: q,
 			facade: facade,
-			player: player,
-			scene: scene,
 			forward_program: forward_program,
 			shadow_program: shadow_program,
-			flat_color_program: flat_color_program,
+			unlit_program: unlit_program,
 			image_program: image_program,
 			shadow_texture: shadow_texture,
 			shadow_color: shadow_color,
-			ik_chain: ik_chain,
 		}
 	}
 
@@ -131,104 +106,34 @@ impl RenderProcessor {
 				let mut frame_buffer = SimpleFrameBuffer::with_depth_buffer(&self.facade, &self.shadow_color, &self.shadow_texture).unwrap();
 
 				frame_buffer.clear_depth(1.0);
-				{
+				for &(ref model, ref uniforms) in &render_frame.models {
 					let uniform_buffer = uniform! {
-						// TODO: doesn't seem like the right place(thread) for these clones
-						shadow: render_frame.scene_uniforms.shadow.clone(),
+						shadow: uniforms.shadow.clone()
 					};
 					frame_buffer.draw(
-						&self.scene.model.vertex_buffer,
-						&self.scene.model.index_buffer,
+						&model.vertex_buffer,
+						&model.index_buffer,
 						&self.shadow_program.program,
 						&uniform_buffer,
-						&self.shadow_program.parameters,
+						&self.shadow_program.parameters
 					).unwrap();
-				}
-				{
-					let uniform_buffer = uniform! {
-						shadow: render_frame.player_uniforms.shadow.clone(),
-					};
-					frame_buffer.draw(
-						&self.player.vertex_buffer,
-						&self.player.index_buffer,
-						&self.shadow_program.program,
-						&uniform_buffer,
-						&self.shadow_program.parameters,
-					).unwrap();
-				}
-				// TODO: do not do all this work here
-				//
-				{
-					let transforms = self.ik_chain.joint_transforms();
-					for joint in &transforms {
-						let vp = render_frame.scene_uniforms.shadow.clone();
-
-						let uniform_buffer = uniform! {
-							shadow: UMatrix4(vp.0 * joint),
-						};
-						frame_buffer.draw(
-							&self.ik_chain.model.vertex_buffer,
-							&self.ik_chain.model.index_buffer,
-							&self.shadow_program.program,
-							&uniform_buffer,
-							&self.shadow_program.parameters
-						).unwrap();
-					}
 				}
 			}
 
 			let mut frame = self.facade.draw();
 			frame.clear_color_and_depth((0.125f32, 0.25f32, 0.5f32, 1.0f32), 1.0);
 			{
-				let uniform_buffer = uniform! {
-					shadow:                  render_frame.scene_uniforms.shadow.clone(),
-					shadow_map:              self.shadow_texture.sampled(),
-					model:                   render_frame.scene_uniforms.model.clone(),
-					model_view_projection:   render_frame.scene_uniforms.model_view_projection.clone(),
-					reverse_light_direction: render_frame.scene_uniforms.reverse_light_direction.clone(),
-				};
-				frame.draw(
-					&self.scene.model.vertex_buffer,
-					&self.scene.model.index_buffer,
-					&self.forward_program.program,
-					&uniform_buffer,
-					&self.forward_program.parameters
-				).unwrap();
-			}
-			{
-				let uniform_buffer = uniform! {
-					shadow:                  render_frame.player_uniforms.shadow.clone(),
-					shadow_map:              self.shadow_texture.sampled(),
-					model:                   render_frame.player_uniforms.model.clone(),
-					model_view_projection:   render_frame.player_uniforms.model_view_projection.clone(),
-					reverse_light_direction: render_frame.player_uniforms.reverse_light_direction.clone(),
-				};
-				frame.draw(
-					&self.player.vertex_buffer,
-					&self.player.index_buffer,
-					&self.forward_program.program,
-					&uniform_buffer,
-					&self.forward_program.parameters
-				).unwrap();
-			}
-			{
-				// TODO: do not do all this work here
-				//
-				let transforms = self.ik_chain.joint_transforms();
-				for joint in transforms {
-					let vp = render_frame.scene_uniforms.model_view_projection.clone();
-					let shadow = render_frame.scene_uniforms.shadow.clone();
-
+				for &(ref model, ref uniforms) in &render_frame.models {
 					let uniform_buffer = uniform! {
-						shadow:                  UMatrix4(shadow.0 * joint),
+						shadow:                  uniforms.shadow.clone(),
 						shadow_map:              self.shadow_texture.sampled(),
-						model:                   UMatrix4(joint),
-						model_view_projection:   UMatrix4(vp.0 * joint),
-						reverse_light_direction: render_frame.scene_uniforms.reverse_light_direction.clone(),
+						model:                   uniforms.model.clone(),
+						model_view_projection:   uniforms.model_view_projection.clone(),
+						reverse_light_direction: render_frame.reverse_light_direction.clone(),
 					};
 					frame.draw(
-						&self.ik_chain.model.vertex_buffer,
-						&self.ik_chain.model.index_buffer,
+						&model.vertex_buffer,
+						&model.index_buffer,
 						&self.forward_program.program,
 						&uniform_buffer,
 						&self.forward_program.parameters
@@ -236,12 +141,19 @@ impl RenderProcessor {
 				}
 			}
 			{
-				let s = Matrix4::from_scale(3.0);
-				// TODO: wrap the Matrix4 extraction in a function
-				let matrix = render_frame.scene_uniforms.model_view_projection.clone();
-				gnomon::draw(self, &mut frame, matrix.0 * s);
-				let matrix = render_frame.player_uniforms.model_view_projection.clone();
-				gnomon::draw(self, &mut frame, matrix.0 * s);
+				for &(ref model, ref uniforms) in &render_frame.unlit_models {
+					let uniform_buffer = uniform! {
+						model_view_projection: uniforms.model_view_projection.clone()
+					};
+
+					frame.draw(
+						&model.vertex_buffer,
+						&model.index_buffer,
+						&self.unlit_program.program,
+						&uniform_buffer,
+						&self.unlit_program.parameters
+					).unwrap();
+				}
 			}
 			frame.set_finish().unwrap();
 		}

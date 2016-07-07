@@ -1,10 +1,9 @@
-use render::uniform_wrappers::{UMatrix4, UVector3};
+use render::uniform_wrappers::{UMatrix4};
 
 
 #[derive(Clone)]
 pub struct RenderUniforms {
-	pub shadow:                  UMatrix4,
-	pub model:                   UMatrix4,
-	pub model_view_projection:   UMatrix4,
-	pub reverse_light_direction: UVector3,
+	pub shadow:                UMatrix4,
+	pub model:                 UMatrix4,
+	pub model_view_projection: UMatrix4,
 }

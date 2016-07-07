@@ -13,7 +13,6 @@ mod physics;
 mod input;
 mod camera;
 mod model;
-mod scene;
 mod action_state;
 mod scheduler;
 mod inverse_kinematics;

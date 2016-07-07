@@ -33,22 +33,20 @@ struct Joint {
 
 pub struct Chain {
 	joints: Vec<Joint>,
-	pub model: Model,
 }
 
 impl Chain {
 	// TODO: don't hardcode angles but take them as parameters
-	pub fn new<F: Facade>(facade: &F, lengths_and_axes: &[(f64, Axis)]) -> Chain {
+	// TODO: don't call this method "new" if it is returning a model as well
+	//
+	pub fn new<F: Facade>(facade: &F, lengths_and_axes: &[(f64, Axis)]) -> (Chain, Model) {
 		let joints = lengths_and_axes.iter().map(|&(length, axis)| {
 			Joint { angle: PI/8.0, length: length, axis: axis }
 		}).collect::<Vec<Joint>>();
 
 		let model = inverse_kinematics::model::model(facade, lengths_and_axes);
 
-		Chain {
-			joints: joints,
-			model: model,
-		}
+		( Chain { joints: joints }, model )
 	}
 
 	pub fn joint_transforms(&self) -> Vec<Matrix4<f64>> {

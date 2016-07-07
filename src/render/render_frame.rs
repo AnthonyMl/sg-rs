@@ -5,20 +5,25 @@ use cgmath;
 use cgmath::{Matrix, Matrix3, Matrix4, Vector3, Vector4, SquareMatrix, EuclideanSpace, InnerSpace};
 
 use context::{Context};
+use debug::{UnlitModel, UnlitUniforms};
+use model::{Model};
 use physics::{PhysicsFrame};
-use render::render_context::{DEPTH_DIMENSION};
+use render::render_context::{ModelId, DEPTH_DIMENSION};
 use render::render_uniforms::{RenderUniforms};
 use render::uniform_wrappers::{UMatrix4, UVector3};
 
 
 pub struct RenderFrame {
 	pub id: u64,
-	pub scene_uniforms:  RenderUniforms, // TODO: do we need to box the uniforms?
-	pub player_uniforms: RenderUniforms,
+	pub models: Vec<(Arc<Model>, RenderUniforms)>,
+	pub reverse_light_direction: UVector3,
+
+	// DEBUG
+	pub unlit_models: Vec<(Arc<UnlitModel>, UnlitUniforms)>,
 }
 
 impl RenderFrame {
-	pub fn new(_context: Arc<Context>, physics_frame: Arc<PhysicsFrame>) -> RenderFrame {
+	pub fn new(context: Arc<Context>, physics_frame: Arc<PhysicsFrame>) -> RenderFrame {
 		let light_direction = physics_frame.light_direction;
 		let reverse_light_direction = light_direction * -1.0;
 
@@ -96,7 +101,6 @@ impl RenderFrame {
 			shadow:                  UMatrix4(shadow_view_projection),
 			model:                   UMatrix4(Matrix4::identity()),
 			model_view_projection:   UMatrix4(view_projection),
-			reverse_light_direction: UVector3(reverse_light_direction),
 		};
 
 		let translation = Matrix4::from_translation(physics_frame.player_position.to_vec());
@@ -119,13 +123,46 @@ impl RenderFrame {
 			shadow:                  UMatrix4(shadow),
 			model:                   UMatrix4(model),
 			model_view_projection:   UMatrix4(model_view_projection),
-			reverse_light_direction: UVector3(reverse_light_direction),
+		};
+
+		let mut models = vec![
+			(context.render.models.get(&ModelId::Scene).unwrap().clone(), scene_uniforms),
+			(context.render.models.get(&ModelId::Player).unwrap().clone(), player_uniforms),
+		];
+
+		{
+			let transforms = context.render.ik_chain.joint_transforms();
+			for joint in transforms {
+				let shadow = shadow_view_projection * joint;
+				let mvp = view_projection * joint;
+
+				let uniforms = RenderUniforms {
+					shadow:                  UMatrix4(shadow),
+					model:                   UMatrix4(joint),
+					model_view_projection:   UMatrix4(mvp),
+				};
+				models.push((context.render.models.get(&ModelId::IKModel).unwrap().clone(), uniforms));
+			}
+		}
+
+		let unlit_models = {
+			let scale = Matrix4::from_scale(3.0);
+			let smvp = model_view_projection * scale;
+			let svp  =       view_projection * scale;
+			let scene_uniforms  = UnlitUniforms { model_view_projection: UMatrix4(smvp) };
+			let player_uniforms = UnlitUniforms { model_view_projection: UMatrix4(svp) };
+
+			vec![
+				(context.render.unlit_models.get(&ModelId::Gnomon).unwrap().clone(), scene_uniforms),
+				(context.render.unlit_models.get(&ModelId::Gnomon).unwrap().clone(), player_uniforms),
+			]
 		};
 
 		RenderFrame {
-			id:              physics_frame.frame_counter,
-			scene_uniforms:  scene_uniforms,
-			player_uniforms: player_uniforms,
+			id: physics_frame.frame_counter,
+			models: models,
+			reverse_light_direction: UVector3(reverse_light_direction),
+			unlit_models: unlit_models,
 		}
 	}
 }

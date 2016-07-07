@@ -6,8 +6,8 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread;
 
 use crossbeam::sync::{MsQueue};
-use glium::glutin::{WindowBuilder, CursorState, get_primary_monitor};
 use glium::{DisplayBuild};
+use glium::glutin::{WindowBuilder, CursorState, get_primary_monitor};
 use mioco;
 use mioco::{Mioco, Config};
 use mioco::sync::{Mutex, RwLock};
@@ -68,7 +68,7 @@ pub fn init() {
 
 			input:   InputContext  ::new(),
 			physics: PhysicsContext::new(),
-			render:  RenderContext ::new(q.clone(), window_size),
+			render:  RenderContext ::new(&glium_context, q.clone(), window_size),
 		}
 	);
 
