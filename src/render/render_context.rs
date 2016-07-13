@@ -53,8 +53,8 @@ impl RenderContext {
 		}
 	}
 
-	pub fn aspect_ratio(&self) -> f64 {
-		(self.window_size.0 as f64) / (self.window_size.1 as f64)
+	pub fn aspect_ratio(&self) -> f32 {
+		(self.window_size.0 as f32) / (self.window_size.1 as f32)
 	}
 }
 

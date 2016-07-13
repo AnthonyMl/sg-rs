@@ -8,7 +8,7 @@ pub enum InputEvent {
 		id: VirtualKeyCode,
 	},
 	MouseMoved {
-		dx: f64,
-		dy: f64,
+		dx: f32,
+		dy: f32,
 	},
 }

@@ -9,7 +9,7 @@ use render::vertices::{ForwardVertex};
 
 // TODO: instance these if it becomes a promlem
 //
-pub fn model<F: Facade>(facade: &F, lengths_and_axes: &[(f64, Axis)]) -> Model {
+pub fn model<F: Facade>(facade: &F, lengths_and_axes: &[(f32, Axis)]) -> Model {
 	const S: f32 = 0.4f32;
 	const NUM_FACES: usize = 6;
 	const NUM_VERTS_PER_FACE: usize = 4;

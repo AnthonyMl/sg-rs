@@ -1,4 +1,4 @@
-use std::f64::consts::{PI};
+use std::f32::consts::{PI};
 
 use cgmath::{Matrix4, Rad, SquareMatrix, Vector3};
 use glium::backend::{Facade};
@@ -16,7 +16,7 @@ pub enum Axis {
 }
 
 impl Axis {
-	pub fn to_vector3(&self) -> Vector3<f64> {
+	pub fn to_vector3(&self) -> Vector3<f32> {
 		match *self {
 			Axis::X => Vector3::unit_x(),
 			Axis::Y => Vector3::unit_y(),
@@ -26,8 +26,8 @@ impl Axis {
 }
 
 struct Joint {
-	angle:  f64,
-	length: f64,
+	angle:  f32,
+	length: f32,
 	axis:   Axis,
 }
 
@@ -39,7 +39,7 @@ impl Chain {
 	// TODO: don't hardcode angles but take them as parameters
 	// TODO: don't call this method "new" if it is returning a model as well
 	//
-	pub fn new<F: Facade>(facade: &F, lengths_and_axes: &[(f64, Axis)]) -> (Chain, Model) {
+	pub fn new<F: Facade>(facade: &F, lengths_and_axes: &[(f32, Axis)]) -> (Chain, Model) {
 		let joints = lengths_and_axes.iter().map(|&(length, axis)| {
 			Joint { angle: PI/8.0, length: length, axis: axis }
 		}).collect::<Vec<Joint>>();
@@ -49,13 +49,13 @@ impl Chain {
 		( Chain { joints: joints }, model )
 	}
 
-	pub fn joint_transforms(&self) -> Vec<Matrix4<f64>> {
+	pub fn joint_transforms(&self) -> Vec<Matrix4<f32>> {
 		let mut models = Vec::with_capacity(self.joints.len());
-		let mut parent: Matrix4<f64> = Matrix4::identity();
+		let mut parent: Matrix4<f32> = Matrix4::identity();
 
 		for joint in &self.joints {
 			let r = Matrix4::from_axis_angle(joint.axis.to_vector3(), Rad::new(joint.angle));
-			let t = Matrix4::from_translation(Vector3::new(0.0, joint.length as f64, 0.0));
+			let t = Matrix4::from_translation(Vector3::new(0.0, joint.length as f32, 0.0));
 
 			let pr = parent * r;
 			if joint.length != 0.0 { models.push(pr) }

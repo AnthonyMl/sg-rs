@@ -87,8 +87,8 @@ impl RenderProcessor {
 
 					self.facade.get_window().unwrap().set_cursor_position(cx, cy).ok();
 					out.push(InputEvent::MouseMoved {
-						dx: ((x - cx) as f64) / (cx as f64),
-						dy: ((y - cy) as f64) / (cy as f64),
+						dx: ((x - cx) as f32) / (cx as f32),
+						dy: ((y - cy) as f32) / (cy as f32),
 					});
 				},
 				Event::Resized(_width, _height) => {

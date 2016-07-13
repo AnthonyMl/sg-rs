@@ -41,7 +41,7 @@ pub fn init() {
 
 	let window_size = get_primary_monitor().get_dimensions();
 	let window_size = (window_size.0/2, window_size.1/2); // FIXME: macbook scaling bs
-	let aspect_ratio = (window_size.0 as f64) / (window_size.1 as f64);
+	let aspect_ratio = (window_size.0 as f32) / (window_size.1 as f32);
 
 	let glium_context = WindowBuilder::new()
 		.with_dimensions(window_size.0, window_size.1)

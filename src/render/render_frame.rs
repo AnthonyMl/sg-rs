@@ -1,5 +1,5 @@
-use std::f64::{MAX, MIN};
-use std::f64::consts::{PI};
+use std::f32::{MAX, MIN};
+use std::f32::consts::{PI};
 use std::sync::{Arc};
 
 use cgmath;
@@ -36,8 +36,8 @@ impl RenderFrame {
 			// TODO: this should be constant/held somewhere
 			//
 			let shadow_width = {
-				let outside_length:  f64 = (corners[4] - corners[1]).magnitude();
-				let diagonal_length: f64 = (corners[1] - corners[0]).magnitude();
+				let outside_length:  f32 = (corners[4] - corners[1]).magnitude();
+				let diagonal_length: f32 = (corners[1] - corners[0]).magnitude();
 				outside_length.max(diagonal_length)
 			};
 
@@ -50,7 +50,7 @@ impl RenderFrame {
 
 			// TODO: do something correct instead of this
 			//
-			let geometry_corners: Vec<Vector3<f64>> = vec![
+			let geometry_corners: Vec<Vector3<f32>> = vec![
 				Vector3::new(-20.0,  0.0, -20.0),
 				Vector3::new( 20.0,  0.0, -20.0),
 				Vector3::new(-20.0,  0.0,  20.0),
@@ -74,7 +74,7 @@ impl RenderFrame {
 				if corner.z > max_z { max_z = corner.z }
 			}
 
-			let world_units_per_texel = shadow_width / (DEPTH_DIMENSION as f64);
+			let world_units_per_texel = shadow_width / (DEPTH_DIMENSION as f32);
 			min_x = (min_x / world_units_per_texel).floor() * world_units_per_texel;
 			min_y = (min_y / world_units_per_texel).floor() * world_units_per_texel;
 
@@ -108,14 +108,14 @@ impl RenderFrame {
 
 		let translation = Matrix4::from_translation(physics_frame.player_position.to_vec());
 
-		let up                  = Vector3::new(0f64, 1f64, 0f64);
-		let flat_view_direction = (Vector3 { y: 0f64, .. physics_frame.get_view_direction() }).normalize();
+		let up                  = Vector3::new(0f32, 1f32, 0f32);
+		let flat_view_direction = (Vector3 { y: 0f32, .. physics_frame.get_view_direction() }).normalize();
 		let right               = flat_view_direction.cross(up).normalize();
 		let up                  = right.cross(flat_view_direction);
 		let rotation = Matrix4::from_cols(
-			right.extend(0f64),
-			up.extend(0f64),
-			(flat_view_direction * -1f64).extend(0f64),
+			right.extend(0f32),
+			up.extend(0f32),
+			(flat_view_direction * -1f32).extend(0f32),
 			Vector4::unit_w());
 
 		let model = translation * rotation;
@@ -134,12 +134,12 @@ impl RenderFrame {
 		];
 
 		{ // TODO: all this is constant
-			const D: f64 = 8f64;
-			const A: f64 = 40f64;
+			const D: f32 = 8f32;
+			const A: f32 = 40f32;
 
 			let seed: &[_] = &[2, 2, 2, 2];
 			let mut rng: StdRng = SeedableRng::from_seed(seed);
-			let range = Range::new(0f64, PI * 0.5);
+			let range = Range::new(0f32, PI * 0.5);
 
 			let zs = [D * -3.0, D * 3.0, D * -2.0, D * 2.0, D, -D, 0.0, A, -A];
 

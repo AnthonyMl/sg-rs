@@ -1,5 +1,5 @@
 use std::sync::{Arc};
-use std::f64::consts::{PI};
+use std::f32::consts::{PI};
 
 use cgmath::{Point3, Vector3, InnerSpace};
 
@@ -13,20 +13,20 @@ use input::{InputFrame};
 pub struct PhysicsFrame {
 	pub frame_counter:   u64,
 	pub camera:          Camera,
-	pub player_position: Point3<f64>,
-	pub azimuth:         f64,
-	pub elevation:       f64,
+	pub player_position: Point3<f32>,
+	pub azimuth:         f32,
+	pub elevation:       f32,
 
-	pub light_direction: Vector3<f64>,
-	pub aspect_ratio:    f64,
+	pub light_direction: Vector3<f32>,
+	pub aspect_ratio:    f32,
 }
 
 impl PhysicsFrame {
-	pub fn frame_zero(aspect_ratio: f64) -> PhysicsFrame {
+	pub fn frame_zero(aspect_ratio: f32) -> PhysicsFrame {
 		let light_direction = Vector3::new(1.0, -1.0, -1.5).normalize();
-		let player_position = Point3::new(0f64, 1f64, 0f64);
-		let azimuth   = 0f64;
-		let elevation = 0f64;
+		let player_position = Point3::new(0f32, 1f32, 0f32);
+		let azimuth   = 0f32;
+		let elevation = 0f32;
 		let view_direction = PhysicsFrame::view_direction(azimuth, elevation);
 
 		PhysicsFrame {
@@ -41,23 +41,23 @@ impl PhysicsFrame {
 	}
 
 	pub fn new(context: Arc<Context>, frame: Arc<PhysicsFrame>, input_frame: Arc<InputFrame>) -> PhysicsFrame {
-		const ELEVATION_LIMIT: f64 = 0.95;
+		const ELEVATION_LIMIT: f32 = 0.95;
 		let angles_delta = -input_frame.action_state.view_direction; // TODO: scale
 
 		let azimuth   = frame.azimuth   + angles_delta.x;
 		let elevation = frame.elevation + angles_delta.y;
-		let elevation = elevation.min(PI * ELEVATION_LIMIT).max(PI * (1f64 - ELEVATION_LIMIT));
+		let elevation = elevation.min(PI * ELEVATION_LIMIT).max(PI * (1f32 - ELEVATION_LIMIT));
 		let view_direction = PhysicsFrame::view_direction(azimuth, elevation);
-		let right = view_direction.cross(Vector3::new(0f64, 1f64, 0f64)).normalize();
+		let right = view_direction.cross(Vector3::new(0f32, 1f32, 0f32)).normalize();
 
 		let input_direction = input_frame.action_state.movement_direction; // TODO: scale
 
-		let flat_view_direction = (Vector3 { y: 0f64, .. view_direction }).normalize();
-		let flat_right          = (Vector3 { y: 0f64, ..          right }).normalize();
+		let flat_view_direction = (Vector3 { y: 0f32, .. view_direction }).normalize();
+		let flat_right          = (Vector3 { y: 0f32, ..          right }).normalize();
 
 		// TODO: generalize and factor out all integration
 		//
-		const FUDGE: f64 = 0.1f64;
+		const FUDGE: f32 = 0.1f32;
 		let acceleration
 			= flat_view_direction * input_direction.x * FUDGE
 			+ flat_right          * input_direction.y * FUDGE;
@@ -79,7 +79,7 @@ impl PhysicsFrame {
 		}
 	}
 
-	fn view_direction(azimuth: f64, elevation: f64) -> Vector3<f64> {
+	fn view_direction(azimuth: f32, elevation: f32) -> Vector3<f32> {
 		Vector3 {
 			x:  elevation.sin() * azimuth.cos(),
 			y: -elevation.cos(),
@@ -87,7 +87,7 @@ impl PhysicsFrame {
 		}
 	}
 
-	pub fn get_view_direction(&self) -> Vector3<f64> {
+	pub fn get_view_direction(&self) -> Vector3<f32> {
 		PhysicsFrame::view_direction(self.azimuth, self.elevation)
 	}
 }
