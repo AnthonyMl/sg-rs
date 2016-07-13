@@ -4,6 +4,7 @@ extern crate crossbeam;
 extern crate time;
 extern crate cgmath;
 extern crate tobj;
+extern crate rand;
 #[macro_use]
 extern crate mioco;
 

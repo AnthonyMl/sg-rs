@@ -1,8 +1,11 @@
 use std::f64::{MAX, MIN};
+use std::f64::consts::{PI};
 use std::sync::{Arc};
 
 use cgmath;
-use cgmath::{Matrix, Matrix3, Matrix4, Vector3, Vector4, SquareMatrix, EuclideanSpace, InnerSpace};
+use cgmath::{Matrix, Matrix3, Matrix4, Vector3, Vector4, SquareMatrix, EuclideanSpace, InnerSpace, Rad};
+use rand::{SeedableRng, StdRng};
+use rand::distributions::{IndependentSample, Range};
 
 use context::{Context};
 use debug::{UnlitModel, UnlitUniforms};
@@ -126,9 +129,33 @@ impl RenderFrame {
 		};
 
 		let mut models = vec![
-			(context.render.models.get(&ModelId::Scene).unwrap().clone(), scene_uniforms),
+			(context.render.models.get(&ModelId::Scene).unwrap().clone(), scene_uniforms.clone()),
 			(context.render.models.get(&ModelId::Player).unwrap().clone(), player_uniforms),
 		];
+
+		{ // TODO: all this is constant
+			const D: f64 = 8f64;
+			const A: f64 = 40f64;
+
+			let seed: &[_] = &[2, 2, 2, 2];
+			let mut rng: StdRng = SeedableRng::from_seed(seed);
+			let range = Range::new(0f64, PI * 0.5);
+
+			let zs = [D * -3.0, D * 3.0, D * -2.0, D * 2.0, D, -D, 0.0, A, -A];
+
+			for &z in &zs {
+				let transform =
+					Matrix4::from_translation(Vector3::new(A, 0.0, z)) *
+					Matrix4::from_angle_y(Rad{ s: range.ind_sample(&mut rng) });
+
+				let uniforms = RenderUniforms {
+					shadow:                UMatrix4(shadow_view_projection * transform),
+					model:                 UMatrix4(transform),
+					model_view_projection: UMatrix4(view_projection * transform),
+				};
+				models.push((context.render.models.get(&ModelId::Tree).unwrap().clone(), uniforms));
+			}
+		}
 
 		{
 			let transforms = context.render.ik_chain.joint_transforms();

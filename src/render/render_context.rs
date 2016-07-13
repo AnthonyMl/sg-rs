@@ -13,11 +13,12 @@ use render::render_frame::{RenderFrame};
 
 pub const DEPTH_DIMENSION: u32 = 2048;
 
-#[derive(Eq, PartialEq, Hash)]
+#[derive(Eq, PartialEq, Hash, Copy, Clone)]
 pub enum ModelId {
 	Player,
 	Scene,
 	IKModel,
+	Tree,
 
 	// DEBUG
 	Gnomon,
@@ -59,15 +60,14 @@ impl RenderContext {
 
 fn load_initial_models<F: Facade>(facade: &F) -> (HashMap<ModelId, Arc<Model>>, Chain) {
 	let mut map = HashMap::new();
-	{
-		const PLAYER_PATH_STRING: &'static str = "./data/player.obj";
-		let player = Arc::new(Model::new(facade, &Path::new(PLAYER_PATH_STRING)));
-		map.insert(ModelId::Player, player);
-	}
-	{
-		const SCENE_PATH_STRING:  &'static str = "./data/level.obj";
-		let scene = Arc::new(Model::new(facade, &Path::new(SCENE_PATH_STRING)));
-		map.insert(ModelId::Scene, scene);
+	const MODEL_PATH_STRINGS: [(ModelId, &'static str); 3] = [
+		(ModelId::Player, "./data/player.obj"),
+		(ModelId::Scene,  "./data/level.obj"),
+		(ModelId::Tree,   "./data/tree.obj")
+	];
+	for &(model_id, path) in &MODEL_PATH_STRINGS {
+		let model = Arc::new(Model::new(facade, &Path::new(path)));
+		map.insert(model_id, model);
 	}
 	let chain = {
 		let (chain, model) = Chain::new(facade, &[

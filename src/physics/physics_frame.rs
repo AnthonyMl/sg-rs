@@ -23,7 +23,7 @@ pub struct PhysicsFrame {
 
 impl PhysicsFrame {
 	pub fn frame_zero(aspect_ratio: f64) -> PhysicsFrame {
-		let light_direction = Vector3::new(1.5, -1.0, -1.0).normalize();
+		let light_direction = Vector3::new(1.0, -1.0, -1.5).normalize();
 		let player_position = Point3::new(0f64, 1f64, 0f64);
 		let azimuth   = 0f64;
 		let elevation = 0f64;
