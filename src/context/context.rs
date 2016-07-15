@@ -56,19 +56,21 @@ pub fn init() {
 
 	let (render_tokens_sender, render_tokens_receiver) = channel::<RenderToken>();
 
-	let physics_zero = RwLock::new(Arc::new(PhysicsFrame::frame_zero(aspect_ratio)));
+	let physics_zero = Arc::new(PhysicsFrame::frame_zero(aspect_ratio));
+
+	let render_context = RenderContext::new(&glium_context, q.clone(), window_size, &physics_zero.ik_chains);
 
 	let context = Arc::new(
 		Context {
 			exit: AtomicBool::new(false),
 			input_senders: MsQueue::new(),
-			last_physics_frame: physics_zero,
+			last_physics_frame: RwLock::new(physics_zero),
 			render_tokens_length: AtomicUsize::new(0),
 			physics_continuations: Arc::new(Mutex::new(HashMap::new())),
 
-			input:   InputContext  ::new(),
+			input:   InputContext::new(),
 			physics: PhysicsContext::new(),
-			render:  RenderContext ::new(&glium_context, q.clone(), window_size),
+			render:  render_context,
 		}
 	);
 

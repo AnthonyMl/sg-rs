@@ -6,7 +6,7 @@ use crossbeam::sync::{MsQueue};
 use glium::backend::{Facade};
 
 use debug::{gnomon, UnlitModel};
-use inverse_kinematics::{Axis, Chain};
+use inverse_kinematics::{Chain};
 use model::{Model};
 use render::render_frame::{RenderFrame};
 
@@ -17,7 +17,7 @@ pub const DEPTH_DIMENSION: u32 = 2048;
 pub enum ModelId {
 	Player,
 	Scene,
-	IKModel,
+	IKModel, // TODO: we are going to need more of these / a dynamic way to generate ids and load at a later time
 	Tree,
 
 	// DEBUG
@@ -28,15 +28,14 @@ pub struct RenderContext {
 	pub q: Arc<MsQueue<RenderFrame>>, // TODO: make private and provide minimal decent api
 	window_size: (u32, u32), // TODO: maybe this should be a per RenderFrame parameter
 	pub models: HashMap<ModelId, Arc<Model>>,
-	pub ik_chain: Chain, // TODO: don't keep this here
 
 	// DEBUG
 	pub unlit_models: HashMap<ModelId, Arc<UnlitModel>>,
 }
 
 impl RenderContext {
-	pub fn new<F: Facade>(facade: &F, q: Arc<MsQueue<RenderFrame>>, window_size: (u32, u32)) -> RenderContext {
-		let (model_map, chain) = load_initial_models(facade);
+	pub fn new<F: Facade>(facade: &F, q: Arc<MsQueue<RenderFrame>>, window_size: (u32, u32), ik_chains: &Vec<Chain>) -> RenderContext {
+		let model_map = load_initial_models(facade, ik_chains);
 
 		// DEBUG
 		let mut unlit_models = HashMap::new();
@@ -46,7 +45,6 @@ impl RenderContext {
 			q: q,
 			window_size: window_size,
 			models: model_map,
-			ik_chain: chain,
 
 			// DEBUG
 			unlit_models: unlit_models,
@@ -58,8 +56,11 @@ impl RenderContext {
 	}
 }
 
-fn load_initial_models<F: Facade>(facade: &F) -> (HashMap<ModelId, Arc<Model>>, Chain) {
+// TODO: don't pass in chains but make something like IntoModel
+//
+fn load_initial_models<F: Facade>(facade: &F, ik_chains: &Vec<Chain>) -> HashMap<ModelId, Arc<Model>> {
 	let mut map = HashMap::new();
+
 	const MODEL_PATH_STRINGS: [(ModelId, &'static str); 3] = [
 		(ModelId::Player, "./data/player.obj"),
 		(ModelId::Scene,  "./data/level.obj"),
@@ -69,18 +70,10 @@ fn load_initial_models<F: Facade>(facade: &F) -> (HashMap<ModelId, Arc<Model>>, 
 		let model = Arc::new(Model::new(facade, &Path::new(path)));
 		map.insert(model_id, model);
 	}
-	let chain = {
-		let (chain, model) = Chain::new(facade, &[
-			(0.0, Axis::Y),
-			(3.0, Axis::Z),
-			(3.0, Axis::Z),
-			(3.0, Axis::Z)
-		]);
-		map.insert(ModelId::IKModel, Arc::new(model));
-		chain
-	};
-
-	(map, chain)
+	for chain in ik_chains {
+		map.insert(ModelId::IKModel, Arc::new(chain.model(facade)));
+	}
+	map
 }
 
 unsafe impl Send for RenderContext {}

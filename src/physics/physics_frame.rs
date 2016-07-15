@@ -6,6 +6,8 @@ use cgmath::{Point3, Vector3, InnerSpace};
 use camera::{Camera};
 use context::{Context};
 use input::{InputFrame};
+use inverse_kinematics::{Axis, Chain, Joint};
+use inverse_kinematics::cyclic_coordinate_descent::{cyclic_coordinate_descent};
 
 
 // TODO: put in a soft cap on elevation with a slow drift
@@ -16,6 +18,7 @@ pub struct PhysicsFrame {
 	pub player_position: Point3<f32>,
 	pub azimuth:         f32,
 	pub elevation:       f32,
+	pub ik_chains:       Vec<Chain>,
 
 	pub light_direction: Vector3<f32>,
 	pub aspect_ratio:    f32,
@@ -28,6 +31,17 @@ impl PhysicsFrame {
 		let azimuth   = 0f32;
 		let elevation = 0f32;
 		let view_direction = PhysicsFrame::view_direction(azimuth, elevation);
+		let ik_chains = vec![
+			Chain {
+				joints: vec![
+					Joint { length: 0.0, axis: Axis::Y },
+					Joint { length: 3.0, axis: Axis::X },
+					Joint { length: 3.0, axis: Axis::X },
+					Joint { length: 3.0, axis: Axis::X }
+				],
+				angles: vec![0.0, 0.0, 0.0, 0.1]
+			}
+		];
 
 		PhysicsFrame {
 			frame_counter:   0,
@@ -35,6 +49,7 @@ impl PhysicsFrame {
 			player_position: player_position,
 			azimuth:         azimuth,
 			elevation:       elevation,
+			ik_chains:       ik_chains,
 			light_direction: light_direction,
 			aspect_ratio:    aspect_ratio,
 		}
@@ -68,12 +83,22 @@ impl PhysicsFrame {
 		//
 		let camera = Camera::new(player_position, view_direction, context.render.aspect_ratio());
 
+		let ik_target = Vector3::new(4.0, 6.0, 3.0);
+		let ik_chains = frame.ik_chains.iter().map(|chain| {
+			Chain {
+				angles: cyclic_coordinate_descent(&chain, ik_target),
+				joints: chain.joints.to_vec()
+			}
+		}).collect();
+
 		PhysicsFrame {
 			frame_counter: frame.frame_counter + 1,
 			camera: camera,
 			player_position: player_position,
 			azimuth: azimuth,
 			elevation: elevation,
+			ik_chains: ik_chains,
+
 			light_direction: frame.light_direction,
 			aspect_ratio: frame.aspect_ratio,
 		}

@@ -157,8 +157,8 @@ impl RenderFrame {
 			}
 		}
 
-		{
-			let transforms = context.render.ik_chain.joint_transforms();
+		for chain in &physics_frame.ik_chains {
+			let transforms = chain.visible_joint_transforms();
 			for joint in transforms {
 				let shadow = shadow_view_projection * joint;
 				let mvp = view_projection * joint;

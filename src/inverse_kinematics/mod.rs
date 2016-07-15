@@ -1,4 +1,4 @@
-pub use self::chain::{Axis, Chain};
+pub use self::chain::{Axis, Chain, Joint};
 
 mod chain;
-mod model;
+pub mod cyclic_coordinate_descent;
