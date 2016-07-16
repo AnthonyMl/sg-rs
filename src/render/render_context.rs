@@ -5,7 +5,7 @@ use std::sync::{Arc};
 use crossbeam::sync::{MsQueue};
 use glium::backend::{Facade};
 
-use debug::{gnomon, UnlitModel};
+use debug::{gnomon, indicator, UnlitModel};
 use inverse_kinematics::{Chain};
 use model::{Model};
 use render::render_frame::{RenderFrame};
@@ -22,6 +22,7 @@ pub enum ModelId {
 
 	// DEBUG
 	Gnomon,
+	Indicator,
 }
 
 pub struct RenderContext {
@@ -40,6 +41,7 @@ impl RenderContext {
 		// DEBUG
 		let mut unlit_models = HashMap::new();
 		unlit_models.insert(ModelId::Gnomon, Arc::new(gnomon::model(facade)));
+		unlit_models.insert(ModelId::Indicator, Arc::new(indicator::model(facade)));
 
 		RenderContext {
 			q: q,

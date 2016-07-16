@@ -9,6 +9,7 @@ use rand::distributions::{IndependentSample, Range};
 
 use context::{Context};
 use debug::{UnlitModel, UnlitUniforms};
+use inverse_kinematics::{State};
 use model::{Model};
 use physics::{PhysicsFrame};
 use render::render_context::{ModelId, DEPTH_DIMENSION};
@@ -172,14 +173,17 @@ impl RenderFrame {
 
 		for chain in &physics_frame.ik_chains {
 			let transforms = chain.visible_joint_transforms();
+			let offset = Matrix4::from_translation(chain.position);
+
 			for joint in transforms {
+				let joint = offset * joint;
 				let shadow = shadow_view_projection * joint;
 				let mvp = view_projection * joint;
 
 				let uniforms = RenderUniforms {
-					shadow:                  UMatrix4(shadow),
-					model:                   UMatrix4(joint),
-					model_view_projection:   UMatrix4(mvp),
+					shadow:                UMatrix4(shadow),
+					model:                 UMatrix4(joint),
+					model_view_projection: UMatrix4(mvp),
 				};
 				models.push((context.render.models.get(&ModelId::IKModel).unwrap().clone(), uniforms));
 
@@ -189,6 +193,16 @@ impl RenderFrame {
 
 				unlit_models.push((context.render.unlit_models.get(&ModelId::Gnomon).unwrap().clone(), unlit_uniforms));
 			}
+
+			match chain.state {
+				State::Seeking { target, .. } => {
+					let target = view_projection * offset * Matrix4::from_translation(target);
+					let unlit_uniforms = UnlitUniforms { model_view_projection: UMatrix4(target) };
+
+					unlit_models.push((context.render.unlit_models.get(&ModelId::Indicator).unwrap().clone(), unlit_uniforms));
+				},
+				_ => ()
+			};
 		}
 
 		RenderFrame {

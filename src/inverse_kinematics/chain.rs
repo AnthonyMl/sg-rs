@@ -3,6 +3,7 @@ use glium::{IndexBuffer, VertexBuffer};
 use glium::backend::{Facade};
 use glium::index::{PrimitiveType};
 
+use inverse_kinematics::{State};
 use model::{Model};
 use render::vertices::{ForwardVertex};
 
@@ -31,9 +32,12 @@ pub struct Joint {
 	pub axis:   Axis,
 }
 
+#[derive(Clone)]
 pub struct Chain {
-	pub joints: Vec<Joint>,
-	pub angles: Vec<f32>,
+	pub joints:   Vec<Joint>,
+	pub angles:   Vec<f32>,
+	pub state:    State,
+	pub position: Vector3<f32>
 }
 
 impl Chain {
