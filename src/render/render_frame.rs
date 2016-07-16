@@ -157,6 +157,19 @@ impl RenderFrame {
 			}
 		}
 
+		let mut unlit_models = {
+			let scale = Matrix4::from_scale(3.0);
+			let smvp = model_view_projection * scale;
+			let svp  =       view_projection * scale;
+			let scene_uniforms  = UnlitUniforms { model_view_projection: UMatrix4(smvp) };
+			let player_uniforms = UnlitUniforms { model_view_projection: UMatrix4(svp) };
+
+			vec![
+				(context.render.unlit_models.get(&ModelId::Gnomon).unwrap().clone(), scene_uniforms),
+				(context.render.unlit_models.get(&ModelId::Gnomon).unwrap().clone(), player_uniforms),
+			]
+		};
+
 		for chain in &physics_frame.ik_chains {
 			let transforms = chain.visible_joint_transforms();
 			for joint in transforms {
@@ -169,21 +182,14 @@ impl RenderFrame {
 					model_view_projection:   UMatrix4(mvp),
 				};
 				models.push((context.render.models.get(&ModelId::IKModel).unwrap().clone(), uniforms));
+
+				let mvp = mvp * Matrix4::from_scale(2.0);
+
+				let unlit_uniforms = UnlitUniforms { model_view_projection: UMatrix4(mvp) };
+
+				unlit_models.push((context.render.unlit_models.get(&ModelId::Gnomon).unwrap().clone(), unlit_uniforms));
 			}
 		}
-
-		let unlit_models = {
-			let scale = Matrix4::from_scale(3.0);
-			let smvp = model_view_projection * scale;
-			let svp  =       view_projection * scale;
-			let scene_uniforms  = UnlitUniforms { model_view_projection: UMatrix4(smvp) };
-			let player_uniforms = UnlitUniforms { model_view_projection: UMatrix4(svp) };
-
-			vec![
-				(context.render.unlit_models.get(&ModelId::Gnomon).unwrap().clone(), scene_uniforms),
-				(context.render.unlit_models.get(&ModelId::Gnomon).unwrap().clone(), player_uniforms),
-			]
-		};
 
 		RenderFrame {
 			id: physics_frame.frame_counter,
