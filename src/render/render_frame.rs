@@ -110,7 +110,7 @@ impl RenderFrame {
 		let translation = Matrix4::from_translation(physics_frame.player_position.to_vec());
 
 		let up                  = Vector3::new(0f32, 1f32, 0f32);
-		let flat_view_direction = (Vector3 { y: 0f32, .. physics_frame.get_view_direction() }).normalize();
+		let flat_view_direction = (Vector3 { y: 0f32, .. physics_frame.camera.view_direction() }).normalize();
 		let right               = flat_view_direction.cross(up).normalize();
 		let up                  = right.cross(flat_view_direction);
 		let rotation = Matrix4::from_cols(

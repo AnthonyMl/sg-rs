@@ -5,7 +5,7 @@ use cgmath::{Point3, Vector3, InnerSpace};
 use rand;
 use rand::distributions::{IndependentSample, Range};
 
-use camera::{Camera};
+use camera::{Camera, to_view_direction};
 use context::{Context};
 use input::{InputFrame};
 use inverse_kinematics::{Axis, Chain, Joint, State, Transition, updater};
@@ -17,8 +17,6 @@ pub struct PhysicsFrame {
 	pub frame_counter:   u64,
 	pub camera:          Camera,
 	pub player_position: Point3<f32>,
-	pub azimuth:         f32,
-	pub elevation:       f32,
 	pub ik_chains:       Vec<Chain>,
 
 	pub light_direction: Vector3<f32>,
@@ -29,9 +27,7 @@ impl PhysicsFrame {
 	pub fn frame_zero(aspect_ratio: f32) -> PhysicsFrame {
 		let light_direction = Vector3::new(0.4, -1.0, -0.6).normalize();
 		let player_position = Point3::new(0f32, 1f32, 0f32);
-		let azimuth   = 0f32;
-		let elevation = 0f32;
-		let view_direction = view_direction(azimuth, elevation);
+		let camera = Camera::new(player_position, 0.0, 0.0, aspect_ratio);
 		let ik_chains = vec![
 			Chain {
 				joints: vec![
@@ -48,10 +44,8 @@ impl PhysicsFrame {
 
 		PhysicsFrame {
 			frame_counter:   0,
-			camera:          Camera::new(player_position, view_direction, aspect_ratio),
+			camera:          camera,
 			player_position: player_position,
-			azimuth:         azimuth,
-			elevation:       elevation,
 			ik_chains:       ik_chains,
 			light_direction: light_direction,
 			aspect_ratio:    aspect_ratio,
@@ -59,32 +53,29 @@ impl PhysicsFrame {
 	}
 
 	pub fn new(context: Arc<Context>, frame: Arc<PhysicsFrame>, input_frame: Arc<InputFrame>) -> PhysicsFrame {
-		const ELEVATION_LIMIT: f32 = 0.95;
-		let angles_delta = -input_frame.action_state.view_direction; // TODO: scale
+		let player_position = {
+			// TODO: would it be better to use this frame's view_direction
+			//
+			let view_direction = frame.camera.view_direction();
+			let right = view_direction.cross(Vector3::new(0f32, 1f32, 0f32)).normalize();
 
-		let azimuth   = frame.azimuth   + angles_delta.x;
-		let elevation = frame.elevation + angles_delta.y;
-		let elevation = elevation.min(PI * ELEVATION_LIMIT).max(PI * (1f32 - ELEVATION_LIMIT));
-		let view_direction = view_direction(azimuth, elevation);
-		let right = view_direction.cross(Vector3::new(0f32, 1f32, 0f32)).normalize();
+			let input_direction = input_frame.movement_delta; // TODO: scale
 
-		let input_direction = input_frame.action_state.movement_direction; // TODO: scale
+			let flat_view_direction = (Vector3 { y: 0f32, .. view_direction }).normalize();
+			let flat_right          = (Vector3 { y: 0f32, ..          right }).normalize();
 
-		let flat_view_direction = (Vector3 { y: 0f32, .. view_direction }).normalize();
-		let flat_right          = (Vector3 { y: 0f32, ..          right }).normalize();
+			// TODO: generalize and factor out all integration
+			//
+			const FUDGE: f32 = 0.1f32;
+			let acceleration
+				= flat_view_direction * input_direction.x * FUDGE
+				+ flat_right          * input_direction.y * FUDGE;
 
-		// TODO: generalize and factor out all integration
-		//
-		const FUDGE: f32 = 0.1f32;
-		let acceleration
-			= flat_view_direction * input_direction.x * FUDGE
-			+ flat_right          * input_direction.y * FUDGE;
+			frame.player_position + acceleration
+		};
 
-		let player_position = frame.player_position + acceleration;
-
-		// TODO: this can be kicked up in a task at the start (if we use last frame's position)
-		//
-		let camera = Camera::new(player_position, view_direction, context.render.aspect_ratio());
+		let angles_delta = -input_frame.view_angles_delta; // TODO: scale
+		let camera = frame.camera.update(player_position, angles_delta.x, angles_delta.y, context.render.aspect_ratio());
 
 		let ik_chains = frame.ik_chains.iter().map(|chain| {
 			if chain.state == State::Done {
@@ -103,25 +94,11 @@ impl PhysicsFrame {
 			frame_counter: frame.frame_counter + 1,
 			camera: camera,
 			player_position: player_position,
-			azimuth: azimuth,
-			elevation: elevation,
 			ik_chains: ik_chains,
 
 			light_direction: frame.light_direction,
 			aspect_ratio: frame.aspect_ratio,
 		}
-	}
-
-	pub fn get_view_direction(&self) -> Vector3<f32> {
-		view_direction(self.azimuth, self.elevation)
-	}
-}
-
-fn view_direction(azimuth: f32, elevation: f32) -> Vector3<f32> {
-	Vector3 {
-		x:  elevation.sin() * azimuth.cos(),
-		y: -elevation.cos(),
-		z: -elevation.sin() * azimuth.sin(),
 	}
 }
 
@@ -132,7 +109,7 @@ fn sphere_point(radius: f32) -> Vector3<f32> {
 	let elevation_range = Range::new(PI * 0.5, PI * 0.75);
 	let radius_range = Range::new(radius * 0.2, radius);
 
-	let unit = view_direction(
+	let unit = to_view_direction(
 		azimuth_range.ind_sample(&mut rng),
 		elevation_range.ind_sample(&mut rng)
 	);

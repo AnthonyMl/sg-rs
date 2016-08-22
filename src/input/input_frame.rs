@@ -3,7 +3,6 @@ use std::sync::{Arc};
 use cgmath::{Vector2};
 use mioco;
 
-use action_state::{ActionState};
 use input::keyboard_state::{KeyboardState};
 use input::input_event::{InputEvent};
 use context::{Context};
@@ -12,23 +11,26 @@ use context::{Context};
 #[derive(Clone)]
 pub struct InputFrame {
 	pub frame_counter: u64,
-	pub action_state: ActionState,
+	pub movement_delta: Vector2<f32>,
+	pub view_angles_delta: Vector2<f32>,
 	pub keyboard_state: KeyboardState,
 }
 
 impl InputFrame {
 	pub fn frame_zero() -> InputFrame {
 		InputFrame {
-			frame_counter:  0,
-			action_state:   Default::default(),
-			keyboard_state: Default::default(),
+			frame_counter:     0,
+			movement_delta:    Vector2::new(0.0, 0.0),
+			view_angles_delta: Vector2::new(0.0, 0.0),
+			keyboard_state:    Default::default(),
 		}
 	}
 
 	pub fn new(context: Arc<Context>, frame: Arc<InputFrame>) -> InputFrame {
+		let ic = &context.input;
+
 		let mut keyboard_state = frame.keyboard_state.clone();
 		let mut mouse_movement = Vector2::new(0f32, 0f32);
-		let ic = &context.input;
 
 		while let Some(event) = ic.input_q.try_pop() {
 			match event {
@@ -59,10 +61,8 @@ impl InputFrame {
 
 		InputFrame {
 			frame_counter: frame.frame_counter + 1,
-			action_state: ActionState {
-				movement_direction: direction,
-				view_direction: mouse_movement,
-			},
+			movement_delta: direction,
+			view_angles_delta: mouse_movement,
 			keyboard_state: keyboard_state,
 		}
 	}
