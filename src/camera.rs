@@ -30,7 +30,7 @@ impl Camera {
 		let view	= Matrix4::look_at(eye, center, up);
 
 		let projection = Matrix4::from(PerspectiveFov{
-			fovy: Rad{ s: FIELD_OF_VIEW },
+			fovy: Rad(FIELD_OF_VIEW),
 			aspect: aspect_ratio,
 			near: NEAR_PLANE,
 			far: FAR_PLANE,

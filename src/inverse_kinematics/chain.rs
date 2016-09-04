@@ -46,7 +46,7 @@ impl Chain {
 		let mut parent: Matrix4<f32> = Matrix4::identity();
 
 		for (joint, angle) in self.joints.iter().zip(self.angles.iter()) {
-			let r = Matrix4::from_axis_angle(joint.axis.to_vector3(), Rad::new(*angle));
+			let r = Matrix4::from_axis_angle(joint.axis.to_vector3(), Rad(*angle));
 			let t = Matrix4::from_translation(Vector3::new(0.0, joint.length, 0.0));
 
 			let pr = parent * r;
@@ -61,7 +61,7 @@ impl Chain {
 		let mut accumulator: Matrix4<f32> = Matrix4::identity();
 
 		for (joint, angle) in self.joints.iter().zip(self.angles.iter()) {
-			let r = Matrix4::from_axis_angle(joint.axis.to_vector3(), Rad::new(*angle));
+			let r = Matrix4::from_axis_angle(joint.axis.to_vector3(), Rad(*angle));
 			let t = Matrix4::from_translation(Vector3::new(0.0, joint.length, 0.0));
 
 			accumulator = accumulator * r * t;

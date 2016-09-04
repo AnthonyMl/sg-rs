@@ -60,7 +60,7 @@ pub fn cyclic_coordinate_descent(chain: &Chain, target: Vector3<f32>) -> Vec<f32
 			// TODO: this assumption about Y being our offset direction needs to be put in a single place
 			//
 			let translation = Matrix4::from_translation(Vector3::new(0.0, joint.length, 0.0));
-			let rotation    = Matrix4::from_axis_angle(joint.axis.to_vector3(), Rad{ s: *angle });
+			let rotation    = Matrix4::from_axis_angle(joint.axis.to_vector3(), Rad(*angle));
 			let transform   = rotation * translation;
 
 			*current_transform = prev_transform * transform;

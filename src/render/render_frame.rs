@@ -147,7 +147,7 @@ impl RenderFrame {
 			for &z in &zs {
 				let transform =
 					Matrix4::from_translation(Vector3::new(A, 0.0, z)) *
-					Matrix4::from_angle_y(Rad{ s: range.ind_sample(&mut rng) });
+					Matrix4::from_angle_y(Rad(range.ind_sample(&mut rng)));
 
 				let uniforms = RenderUniforms {
 					shadow:                UMatrix4(shadow_view_projection * transform),
