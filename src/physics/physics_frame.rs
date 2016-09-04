@@ -53,10 +53,11 @@ impl PhysicsFrame {
 	}
 
 	pub fn new(context: Arc<Context>, frame: Arc<PhysicsFrame>, input_frame: Arc<InputFrame>) -> PhysicsFrame {
+		let angles_delta = -input_frame.view_angles_delta; // TODO: scale
+		let camera = frame.camera.update(frame.player_position, angles_delta.x, angles_delta.y, context.render.aspect_ratio());
+
 		let player_position = {
-			// TODO: would it be better to use this frame's view_direction
-			//
-			let view_direction = frame.camera.view_direction();
+			let view_direction = camera.view_direction();
 			let right = view_direction.cross(Vector3::new(0f32, 1f32, 0f32)).normalize();
 
 			let input_direction = input_frame.movement_delta; // TODO: scale
@@ -73,10 +74,6 @@ impl PhysicsFrame {
 
 			frame.player_position + acceleration
 		};
-
-		let angles_delta = -input_frame.view_angles_delta; // TODO: scale
-		let camera = frame.camera.update(player_position, angles_delta.x, angles_delta.y, context.render.aspect_ratio());
-
 		let ik_chains = frame.ik_chains.iter().map(|chain| {
 			if chain.state == State::Done {
 				let target = sphere_point(9.0);
