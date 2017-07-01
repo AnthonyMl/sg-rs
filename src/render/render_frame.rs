@@ -195,7 +195,7 @@ impl RenderFrame {
 			}
 
 			match chain.state {
-				State::Seeking { target, .. } => {
+				State::Seeking { target, .. } | State::Waiting { target, .. } => {
 					let target = view_projection * offset * Matrix4::from_translation(target);
 					let unlit_uniforms = UnlitUniforms { model_view_projection: UMatrix4(target) };
 

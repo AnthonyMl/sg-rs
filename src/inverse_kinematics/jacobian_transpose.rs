@@ -4,8 +4,8 @@ use inverse_kinematics::{Chain};
 
 
 pub fn jacobian_transpose(chain: &Chain, target: Vector3<f32>) -> Vec<f32> {
-	const DISTANCE_THRESHOLD: f32 = 0.1; // ADD DYNOMISM
-	const MAX_ITERATIONS: usize = 30;
+	const DISTANCE_THRESHOLD: f32 = 0.01; // ADD DYNOMISM
+	const MAX_ITERATIONS: usize = 60;
 	const FUDGE: f32 = 0.01;
 
 	if chain.joints.is_empty() { return Vec::new() }
