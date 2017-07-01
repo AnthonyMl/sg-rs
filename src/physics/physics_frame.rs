@@ -89,10 +89,9 @@ impl PhysicsFrame {
 
 			frame.player_position + acceleration
 		};
+		let target = sphere_point(9.0);
 		let ik_chains = frame.ik_chains.iter().map(|chain| {
 			if chain.state == State::Done {
-				let target = sphere_point(9.0);
-
 				updater::update(chain, Transition::NewTarget{
 					target: target,
 					num_transition_frames: 180
