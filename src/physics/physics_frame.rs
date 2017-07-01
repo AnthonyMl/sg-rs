@@ -9,6 +9,8 @@ use camera::{Camera, to_view_direction};
 use context::{Context};
 use input::{InputFrame};
 use inverse_kinematics::{Axis, Chain, Joint, State, Transition, updater};
+use inverse_kinematics::cyclic_coordinate_descent::{cyclic_coordinate_descent};
+use inverse_kinematics::jacobian_transpose::{jacobian_transpose};
 
 
 // TODO: put in a soft cap on elevation with a slow drift
@@ -39,6 +41,19 @@ impl PhysicsFrame {
 				angles: vec![0.0, 0.0, 0.0, 0.1],
 				state: State::Done,
 				position: Vector3::new(59.0, -9.0, -9.0),
+				ik_fun: cyclic_coordinate_descent,
+			},
+			Chain {
+				joints: vec![
+					Joint { length: 0.0, axis: Axis::Y },
+					Joint { length: 3.0, axis: Axis::X },
+					Joint { length: 3.0, axis: Axis::X },
+					Joint { length: 3.0, axis: Axis::X }
+				],
+				angles: vec![0.0, 0.0, 0.0, 0.1],
+				state: State::Done,
+				position: Vector3::new(59.0, -9.0, 9.0),
+				ik_fun: jacobian_transpose,
 			}
 		];
 

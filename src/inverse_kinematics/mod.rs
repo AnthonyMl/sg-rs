@@ -3,4 +3,5 @@ pub use self::updater::{State, Transition, update};
 
 mod chain;
 pub mod cyclic_coordinate_descent;
+pub mod jacobian_transpose;
 pub mod updater;

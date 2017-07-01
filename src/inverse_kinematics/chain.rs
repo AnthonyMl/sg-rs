@@ -32,12 +32,24 @@ pub struct Joint {
 	pub axis:   Axis,
 }
 
-#[derive(Clone)]
 pub struct Chain {
 	pub joints:   Vec<Joint>,
 	pub angles:   Vec<f32>,
 	pub state:    State,
-	pub position: Vector3<f32>
+	pub position: Vector3<f32>,
+	pub ik_fun:   fn(&Chain, Vector3<f32>) -> Vec<f32>,
+}
+
+impl Clone for Chain {
+	fn clone(&self) -> Self {
+		Self {
+			joints: self.joints.clone(),
+			angles: self.angles.clone(),
+			state: self.state.clone(),
+			position: self.position,
+			ik_fun: self.ik_fun
+		}
+	}
 }
 
 impl Chain {
@@ -57,10 +69,14 @@ impl Chain {
 	}
 
 	pub fn cumulative_transforms(&self) -> Vec<Matrix4<f32>> {
+		self.cumulative_transforms_with_angles(&self.angles)
+	}
+
+	pub fn cumulative_transforms_with_angles(&self, angles: &Vec<f32>) -> Vec<Matrix4<f32>> {
 		let mut models = Vec::with_capacity(self.joints.len());
 		let mut accumulator: Matrix4<f32> = Matrix4::identity();
 
-		for (joint, angle) in self.joints.iter().zip(self.angles.iter()) {
+		for (joint, angle) in self.joints.iter().zip(angles.iter()) {
 			let r = Matrix4::from_axis_angle(joint.axis.to_vector3(), Rad(*angle));
 			let t = Matrix4::from_translation(Vector3::new(0.0, joint.length, 0.0));
 

@@ -1,7 +1,6 @@
 use cgmath::{Vector3};
 
 use inverse_kinematics::{Chain};
-use inverse_kinematics::cyclic_coordinate_descent::{cyclic_coordinate_descent};
 
 
 #[derive(Clone, PartialEq)]
@@ -51,11 +50,12 @@ pub fn update(chain: &Chain, transition: Transition) -> Chain {
 					joints: chain.joints.to_vec(),
 					state: state,
 					position: chain.position,
+					ik_fun: chain.ik_fun,
 				}
 			},
 		},
 		Transition::NewTarget{ target, num_transition_frames } => {
-			let target_angles = cyclic_coordinate_descent(&chain, target);
+			let target_angles = (chain.ik_fun)(&chain, target);
 
 			let chain = Chain {
 				joints: chain.joints.to_vec(),
@@ -68,6 +68,7 @@ pub fn update(chain: &Chain, transition: Transition) -> Chain {
 					target: target,
 				},
 				position: chain.position,
+				ik_fun: chain.ik_fun,
 			};
 			update(&chain, Transition::Update)
 		},
