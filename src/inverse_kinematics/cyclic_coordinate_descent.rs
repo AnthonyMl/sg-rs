@@ -6,7 +6,7 @@ use inverse_kinematics::{Chain};
 pub fn cyclic_coordinate_descent(chain: &Chain, target: Vector3<f32>) -> Vec<f32> {
 	const DISTANCE_THRESHOLD: f32 = 0.01; // ADD DYNOMISM
 	const PERP_LENGTH_THRESHOLD: f32 = 0.0001;
-	const MAX_ITERATIONS: usize = 30;
+	const MAX_ITERATIONS: usize = 60;
 
 	if chain.joints.is_empty() { return Vec::new() }
 
