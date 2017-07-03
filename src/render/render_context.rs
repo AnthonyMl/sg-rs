@@ -5,9 +5,10 @@ use std::sync::{Arc};
 use crossbeam::sync::{MsQueue};
 use glium::backend::{Facade};
 
-use debug::{gnomon, indicator, UnlitModel};
+use debug::{gnomon, indicator};
 use inverse_kinematics::{Chain};
 use model::{Model};
+use unlit_model::{UnlitModel};
 use render::render_frame::{RenderFrame};
 
 

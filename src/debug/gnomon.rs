@@ -3,21 +3,7 @@ use glium::backend::{Facade};
 use glium::index::{PrimitiveType};
 
 use render::vertices::{UnlitVertex};
-use render::casts_shadow::{CastsShadow, VertexBufferContainer};
-
-
-// TODO: move these out of here
-//
-pub struct UnlitModel {
-	pub vertex_buffer: VertexBuffer<UnlitVertex>,
-	pub index_buffer: IndexBuffer<u32>,
-}
-
-impl CastsShadow for UnlitModel {
-	fn buffers(&self) -> (VertexBufferContainer, &IndexBuffer<u32>) {
-		(VertexBufferContainer::Unlit{ vertex_buffer: &self.vertex_buffer }, &self.index_buffer)
-	}
-}
+use unlit_model::{UnlitModel};
 
 pub fn model<F: Facade>(facade: &F) -> UnlitModel {
 	let vertices = vec![

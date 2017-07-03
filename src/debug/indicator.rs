@@ -2,7 +2,7 @@ use glium::{IndexBuffer, VertexBuffer};
 use glium::backend::{Facade};
 use glium::index::{PrimitiveType};
 
-use debug::gnomon::{UnlitModel};
+use unlit_model::{UnlitModel};
 use render::vertices::{UnlitVertex};
 
 

@@ -8,7 +8,7 @@ use rand::{SeedableRng, StdRng};
 use rand::distributions::{IndependentSample, Range};
 
 use context::{Context};
-use debug::{UnlitModel};
+use unlit_model::{UnlitModel};
 use inverse_kinematics::{State};
 use model::{Model};
 use physics::{PhysicsFrame};
