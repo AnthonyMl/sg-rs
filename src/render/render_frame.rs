@@ -8,18 +8,21 @@ use rand::{SeedableRng, StdRng};
 use rand::distributions::{IndependentSample, Range};
 
 use context::{Context};
-use debug::{UnlitModel, UnlitUniforms};
+use debug::{UnlitModel};
 use inverse_kinematics::{State};
 use model::{Model};
 use physics::{PhysicsFrame};
 use render::render_context::{ModelId, DEPTH_DIMENSION};
-use render::render_uniforms::{RenderUniforms};
+use render::uniforms::{RenderUniforms, UnlitUniforms, ShadowUniforms};
 use render::uniform_wrappers::{UMatrix4, UVector3};
+use render::casts_shadow::{CastsShadow};
 
 
 pub struct RenderFrame {
 	pub id: u64,
 	pub models: Vec<(Arc<Model>, RenderUniforms)>,
+	// TODO: use type system to make sure that when we add a shadow_caster its ShadowUniforms contains a valid matrix
+	pub shadow_casters: Vec<(Arc<CastsShadow>, Box<ShadowUniforms>)>,
 	pub reverse_light_direction: UVector3,
 
 	// DEBUG
@@ -102,9 +105,9 @@ impl RenderFrame {
 		let view_projection = projection * view;
 
 		let scene_uniforms = RenderUniforms {
-			shadow:                  UMatrix4(shadow_view_projection),
-			model:                   UMatrix4(Matrix4::identity()),
-			model_view_projection:   UMatrix4(view_projection),
+			shadow:                UMatrix4(shadow_view_projection),
+			model:                 UMatrix4(Matrix4::identity()),
+			model_view_projection: UMatrix4(view_projection),
 		};
 
 		let translation = Matrix4::from_translation(physics_frame.player_position.to_vec());
@@ -131,7 +134,15 @@ impl RenderFrame {
 
 		let mut models = vec![
 			(context.render.models.get(&ModelId::Scene).unwrap().clone(), scene_uniforms.clone()),
-			(context.render.models.get(&ModelId::Player).unwrap().clone(), player_uniforms),
+			(context.render.models.get(&ModelId::Player).unwrap().clone(), player_uniforms.clone()),
+		];
+		let mut shadow_casters = vec![
+			(	context.render.models.get(&ModelId::Scene).unwrap().clone() as Arc<CastsShadow>,
+				Box::new(scene_uniforms.clone()) as Box<ShadowUniforms>
+			),
+			(	context.render.models.get(&ModelId::Player).unwrap().clone() as Arc<CastsShadow>,
+				Box::new(player_uniforms.clone()) as Box<ShadowUniforms>
+			)
 		];
 
 		{ // TODO: all this is constant
@@ -154,7 +165,11 @@ impl RenderFrame {
 					model:                 UMatrix4(transform),
 					model_view_projection: UMatrix4(view_projection * transform),
 				};
-				models.push((context.render.models.get(&ModelId::Tree).unwrap().clone(), uniforms));
+				models.push((context.render.models.get(&ModelId::Tree).unwrap().clone(), uniforms.clone()));
+				shadow_casters.push((
+					context.render.models.get(&ModelId::Tree).unwrap().clone() as Arc<CastsShadow>,
+					Box::new(uniforms.clone()) as Box<ShadowUniforms>
+				));
 			}
 		}
 
@@ -162,8 +177,8 @@ impl RenderFrame {
 			let scale = Matrix4::from_scale(3.0);
 			let smvp = model_view_projection * scale;
 			let svp  =       view_projection * scale;
-			let scene_uniforms  = UnlitUniforms { model_view_projection: UMatrix4(smvp) };
-			let player_uniforms = UnlitUniforms { model_view_projection: UMatrix4(svp) };
+			let scene_uniforms  = UnlitUniforms { model_view_projection: UMatrix4(smvp), shadow: None };
+			let player_uniforms = UnlitUniforms { model_view_projection: UMatrix4(svp),  shadow: None };
 
 			vec![
 				(context.render.unlit_models.get(&ModelId::Gnomon).unwrap().clone(), scene_uniforms),
@@ -185,21 +200,31 @@ impl RenderFrame {
 					model:                 UMatrix4(joint),
 					model_view_projection: UMatrix4(mvp),
 				};
-				models.push((context.render.models.get(&ModelId::IKModel).unwrap().clone(), uniforms));
+				models.push((context.render.models.get(&ModelId::IKModel).unwrap().clone(), uniforms.clone()));
+				shadow_casters.push((
+					context.render.models.get(&ModelId::IKModel).unwrap().clone() as Arc<CastsShadow>,
+					Box::new(uniforms.clone()) as Box<ShadowUniforms>
+				));
 
 				let mvp = mvp * Matrix4::from_scale(2.0);
 
-				let unlit_uniforms = UnlitUniforms { model_view_projection: UMatrix4(mvp) };
+				let unlit_uniforms = UnlitUniforms { model_view_projection: UMatrix4(mvp), shadow: Some(UMatrix4(shadow)) };
 
 				unlit_models.push((context.render.unlit_models.get(&ModelId::Gnomon).unwrap().clone(), unlit_uniforms));
 			}
 
 			match chain.state {
 				State::Seeking { target, .. } | State::Waiting { target, .. } => {
-					let target = view_projection * offset * Matrix4::from_translation(target);
-					let unlit_uniforms = UnlitUniforms { model_view_projection: UMatrix4(target) };
+					let model  = offset * Matrix4::from_translation(target);
+					let target = view_projection * model;
+					let shadow = shadow_view_projection * model;
+					let unlit_uniforms = UnlitUniforms { model_view_projection: UMatrix4(target), shadow: Some(UMatrix4(shadow)) };
 
-					unlit_models.push((context.render.unlit_models.get(&ModelId::Indicator).unwrap().clone(), unlit_uniforms));
+					unlit_models.push((context.render.unlit_models.get(&ModelId::Indicator).unwrap().clone(), unlit_uniforms.clone()));
+					shadow_casters.push((
+						context.render.unlit_models.get(&ModelId::Indicator).unwrap().clone() as Arc<CastsShadow>,
+						Box::new(unlit_uniforms.clone()) as Box<ShadowUniforms>
+					));
 				},
 				_ => ()
 			};
@@ -210,6 +235,7 @@ impl RenderFrame {
 			models: models,
 			reverse_light_direction: UVector3(reverse_light_direction),
 			unlit_models: unlit_models,
+			shadow_casters: shadow_casters,
 		}
 	}
 }

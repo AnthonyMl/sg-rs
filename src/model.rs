@@ -7,11 +7,18 @@ use glium::index::{PrimitiveType};
 use tobj;
 
 use render::vertices::{ForwardVertex};
+use render::casts_shadow::{CastsShadow, VertexBufferContainer};
 
 
 pub struct Model {
 	pub vertex_buffer: VertexBuffer<ForwardVertex>,
 	pub index_buffer: IndexBuffer<u32>,
+}
+
+impl CastsShadow for Model {
+	fn buffers(&self) -> (VertexBufferContainer, &IndexBuffer<u32>) {
+		(VertexBufferContainer::Forward{ vertex_buffer: &self.vertex_buffer }, &self.index_buffer)
+	}
 }
 
 impl Model {

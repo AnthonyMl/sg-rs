@@ -3,7 +3,7 @@ use glium::backend::{Facade};
 use glium::index::{PrimitiveType};
 
 use render::vertices::{UnlitVertex};
-use render::uniform_wrappers::{UMatrix4};
+use render::casts_shadow::{CastsShadow, VertexBufferContainer};
 
 
 // TODO: move these out of here
@@ -13,9 +13,10 @@ pub struct UnlitModel {
 	pub index_buffer: IndexBuffer<u32>,
 }
 
-#[derive(Clone)]
-pub struct UnlitUniforms {
-	pub model_view_projection: UMatrix4,
+impl CastsShadow for UnlitModel {
+	fn buffers(&self) -> (VertexBufferContainer, &IndexBuffer<u32>) {
+		(VertexBufferContainer::Unlit{ vertex_buffer: &self.vertex_buffer }, &self.index_buffer)
+	}
 }
 
 pub fn model<F: Facade>(facade: &F) -> UnlitModel {

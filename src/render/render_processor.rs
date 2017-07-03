@@ -11,6 +11,7 @@ use input::{InputEvent};
 use render::shaders::{UnlitProgram, ForwardProgram, ImageProgram, ShadowProgram};
 use render::render_context::{DEPTH_DIMENSION};
 use render::render_frame::{RenderFrame};
+use render::casts_shadow::{VertexBufferContainer};
 
 
 pub struct RenderProcessor {
@@ -106,17 +107,33 @@ impl RenderProcessor {
 				let mut frame_buffer = SimpleFrameBuffer::with_depth_buffer(&self.facade, &self.shadow_color, &self.shadow_texture).unwrap();
 
 				frame_buffer.clear_depth(1.0);
-				for &(ref model, ref uniforms) in &render_frame.models {
+				for (shadow_caster, uniforms) in render_frame.shadow_casters {
 					let uniform_buffer = uniform! {
-						shadow: uniforms.shadow.clone()
+						shadow: uniforms.shadow_matrix().clone(),
 					};
-					frame_buffer.draw(
-						&model.vertex_buffer,
-						&model.index_buffer,
-						&self.shadow_program.program,
-						&uniform_buffer,
-						&self.shadow_program.parameters
-					).unwrap();
+
+					let (vbuffer, index_buffer) = shadow_caster.buffers();
+					match vbuffer {
+						// TODO: can these two cases be unified
+						VertexBufferContainer::Forward{ vertex_buffer } => {
+							frame_buffer.draw(
+								vertex_buffer,
+								index_buffer,
+								&self.shadow_program.program,
+								&uniform_buffer,
+								&self.shadow_program.parameters
+							).unwrap();
+						},
+						VertexBufferContainer::Unlit{ vertex_buffer } => {
+							frame_buffer.draw(
+								vertex_buffer,
+								index_buffer,
+								&self.shadow_program.program,
+								&uniform_buffer,
+								&self.shadow_program.parameters
+							).unwrap();
+						},
+					};
 				}
 			}
 

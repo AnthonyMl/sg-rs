@@ -7,8 +7,9 @@ mod render_context;
 mod render_frame;
 pub mod render_processor;
 mod render_token;
-mod render_uniforms;
 pub mod uniform_wrappers;
+pub mod casts_shadow;
 
 mod shaders;
+mod uniforms;
 pub mod vertices;
