@@ -36,7 +36,7 @@ pub struct RenderContext {
 }
 
 impl RenderContext {
-	pub fn new<F: Facade>(facade: &F, q: Arc<MsQueue<RenderFrame>>, window_size: (u32, u32), ik_chains: &Vec<Chain>) -> RenderContext {
+	pub fn new<F: Facade>(facade: &F, q: Arc<MsQueue<RenderFrame>>, window_size: (u32, u32), ik_chains: &[Chain]) -> RenderContext {
 		let model_map = load_initial_models(facade, ik_chains);
 
 		// DEBUG
@@ -61,7 +61,7 @@ impl RenderContext {
 
 // TODO: don't pass in chains but make something like IntoModel
 //
-fn load_initial_models<F: Facade>(facade: &F, ik_chains: &Vec<Chain>) -> HashMap<ModelId, Arc<Model>> {
+fn load_initial_models<F: Facade>(facade: &F, ik_chains: &[Chain]) -> HashMap<ModelId, Arc<Model>> {
 	let mut map = HashMap::new();
 
 	const MODEL_PATH_STRINGS: [(ModelId, &'static str); 3] = [
