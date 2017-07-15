@@ -72,7 +72,7 @@ impl Chain {
 		self.cumulative_transforms_with_angles(&self.angles)
 	}
 
-	pub fn cumulative_transforms_with_angles(&self, angles: &Vec<f32>) -> Vec<Matrix4<f32>> {
+	pub fn cumulative_transforms_with_angles(&self, angles: &[f32]) -> Vec<Matrix4<f32>> {
 		let mut models = Vec::with_capacity(self.joints.len());
 		let mut accumulator: Matrix4<f32> = Matrix4::identity();
 

@@ -6,6 +6,7 @@ extern crate cgmath;
 extern crate tobj;
 extern crate rand;
 extern crate mioco;
+extern crate nalgebra;
 
 mod context;
 mod render;

@@ -8,9 +8,7 @@ use rand::distributions::{IndependentSample, Range};
 use camera::{Camera, to_view_direction};
 use context::{Context};
 use input::{InputFrame};
-use inverse_kinematics::{Axis, Chain, Joint, State, Transition, updater};
-use inverse_kinematics::cyclic_coordinate_descent::{cyclic_coordinate_descent};
-use inverse_kinematics::jacobian_transpose::{jacobian_transpose};
+use inverse_kinematics::{Axis, Chain, Joint, State, Transition, updater, cyclic_coordinate_descent, jacobian_transpose, jacobian_pseudo_inverse};
 
 
 // TODO: put in a soft cap on elevation with a slow drift
@@ -30,32 +28,39 @@ impl PhysicsFrame {
 		let light_direction = Vector3::new(0.4, -1.0, -0.6).normalize();
 		let player_position = Point3::new(0f32, 1f32, 0f32);
 		let camera = Camera::new(player_position, 0.0, 0.0, aspect_ratio);
-		let ik_chains = vec![
-			Chain {
-				joints: vec![
-					Joint { length: 0.0, axis: Axis::Y },
-					Joint { length: 3.0, axis: Axis::X },
-					Joint { length: 3.0, axis: Axis::X },
-					Joint { length: 3.0, axis: Axis::X }
-				],
-				angles: vec![0.0, 0.0, 0.0, 0.1],
-				state: State::Done,
-				position: Vector3::new(59.0, -9.0, -9.0),
-				ik_fun: cyclic_coordinate_descent,
-			},
-			Chain {
-				joints: vec![
-					Joint { length: 0.0, axis: Axis::Y },
-					Joint { length: 3.0, axis: Axis::X },
-					Joint { length: 3.0, axis: Axis::X },
-					Joint { length: 3.0, axis: Axis::X }
-				],
-				angles: vec![0.0, 0.0, 0.0, 0.1],
-				state: State::Done,
-				position: Vector3::new(59.0, -9.0, 9.0),
-				ik_fun: jacobian_transpose,
-			}
-		];
+		let ik_chains = {
+			let joints = vec![
+				Joint { length: 0.0, axis: Axis::Y },
+				Joint { length: 3.0, axis: Axis::X },
+				Joint { length: 3.0, axis: Axis::X },
+				Joint { length: 3.0, axis: Axis::X }
+			];
+			let angles = vec![0.0, 0.0, 0.0, 0.1];
+			let state = State::Done;
+			vec![
+				Chain {
+					joints: joints.clone(),
+					angles: angles.clone(),
+					state: state.clone(),
+					position: Vector3::new(59.0, -9.0, -9.0),
+					ik_fun: cyclic_coordinate_descent,
+				},
+				Chain {
+					joints: joints.clone(),
+					angles: angles.clone(),
+					state: state.clone(),
+					position: Vector3::new(59.0, -9.0, 9.0),
+					ik_fun: jacobian_transpose,
+				},
+				Chain {
+					joints: joints.clone(),
+					angles: angles.clone(),
+					state: state.clone(),
+					position: Vector3::new(59.0 + (PI/3.0).tan() * 9.0, -9.0, 0.0),
+					ik_fun: jacobian_pseudo_inverse,
+				}
+			]
+		};
 
 		PhysicsFrame {
 			frame_counter:   0,
