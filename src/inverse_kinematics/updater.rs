@@ -1,3 +1,5 @@
+use std::f32::consts::{PI};
+
 use cgmath::{Vector3};
 
 use inverse_kinematics::{Chain};
@@ -34,9 +36,9 @@ pub fn update(chain: &Chain, transition: Transition) -> Chain {
 
 				let t = (current_frame + 1) as f32 / num_transition_frames as f32;
 
-				// TODO: maybe take the shorter angle and not the positive one
-				//
-				let angles = base_angles.iter().zip(target_angles.iter()).map(|(base, target)| { base + t * (target - base) }).collect();
+				let angles = base_angles.iter().zip(target_angles.iter()).map(
+					|(base, target)| { base + t * (target - base) }
+				).collect();
 
 				let state = if current_frame == num_transition_frames {
 					State::Waiting {
@@ -76,7 +78,13 @@ pub fn update(chain: &Chain, transition: Transition) -> Chain {
 			},
 		},
 		Transition::NewTarget{ target, num_transition_frames } => {
-			let target_angles = (chain.ik_fun)(&chain, target);
+			let mut target_angles = (chain.ik_fun)(&chain, target);
+
+			for (base, mut target) in chain.angles.iter().zip(target_angles.iter_mut()) {
+				const TWO_PI: f32 = 2.0 * PI;
+				let difference = *target - *base;
+				if difference.abs() > PI { *target -= TWO_PI * (difference / TWO_PI).round(); }
+			}
 
 			let chain = Chain {
 				joints: chain.joints.to_vec(),
